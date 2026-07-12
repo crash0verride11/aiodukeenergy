@@ -45,6 +45,9 @@ sphinx-autobuild = { version = ">=2024.0.0", python = ">=3.11"}
 
 [tool.semantic_release]
 version_toml = ["pyproject.toml:tool.poetry.version"]
+# Skip non-conventional merge commits (e.g. syncing main from upstream) so the
+# changelog template does not choke on unparseable commit messages.
+commit_parser_options = { ignore_merge_commits = true }
 version_variables = [
     "src/aiodukeenergy_co/__init__.py:__version__",
     "docs/conf.py:release",
