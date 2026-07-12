@@ -4,9 +4,9 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
 # Project information
-project = "aiodukeenergy"
+project = "aiodukeenergy-co"
 copyright = "2024, Jason Hunter"
-author = "Jason Hunter"
+author = "crash0verride11"
 release = "1.1.0"
 
 # General configuration

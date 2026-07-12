@@ -1,12 +1,12 @@
 [tool.poetry]
-name = "aiodukeenergy"
+name = "aiodukeenergy-co"
 version = "1.1.0"
 description = "Asyncio Duke Energy"
 authors = ["Jason Hunter <hunterjm@gmail.com>"]
+maintainers = ["crash0verride11"]
 license = "MIT"
 readme = "README.md"
-repository = "https://github.com/hunterjm/aiodukeenergy"
-documentation = "https://aiodukeenergy.readthedocs.io"
+repository = "https://github.com/crash0verride11/aiodukeenergy"
 classifiers = [
     "Development Status :: 2 - Pre-Alpha",
     "Intended Audience :: Developers",
@@ -15,12 +15,12 @@ classifiers = [
     "Topic :: Software Development :: Libraries",
 ]
 packages = [
-    { include = "aiodukeenergy", from = "src" },
+    { include = "aiodukeenergy_co", from = "src" },
 ]
 
 [tool.poetry.urls]
-"Bug Tracker" = "https://github.com/hunterjm/aiodukeenergy/issues"
-"Changelog" = "https://github.com/hunterjm/aiodukeenergy/blob/main/CHANGELOG.md"
+"Bug Tracker" = "https://github.com/crash0verride11/aiodukeenergy/issues"
+"Changelog" = "https://github.com/crash0verride11/aiodukeenergy/blob/aiodukeenergy-co/CHANGELOG.md"
 
 [tool.poetry.dependencies]
 python = "^3.10"
@@ -46,7 +46,7 @@ sphinx-autobuild = { version = ">=2024.0.0", python = ">=3.11"}
 [tool.semantic_release]
 version_toml = ["pyproject.toml:tool.poetry.version"]
 version_variables = [
-    "src/aiodukeenergy/__init__.py:__version__",
+    "src/aiodukeenergy_co/__init__.py:__version__",
     "docs/conf.py:release",
 ]
 build_command = "pip install poetry && poetry build"
@@ -60,18 +60,18 @@ exclude_commit_patterns = [
 [tool.semantic_release.changelog.environment]
 keep_trailing_newline = true
 
-[tool.semantic_release.branches.main]
-match = "main"
+[tool.semantic_release.branches.release]
+match = "aiodukeenergy-co"
 
 [tool.semantic_release.branches.noop]
-match = "(?!main$)"
+match = "(?!aiodukeenergy-co$)"
 prerelease = true
 
 [tool.pytest.ini_options]
 addopts = """\
     -v
     -Wdefault
-    --cov=aiodukeenergy
+    --cov=aiodukeenergy_co
     --cov-report=term
     --cov-report=xml
     """
@@ -129,7 +129,7 @@ select = [
 "docs/conf.py" = ["D100"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["aiodukeenergy", "tests"]
+known-first-party = ["aiodukeenergy_co", "tests"]
 
 [tool.mypy]
 check_untyped_defs = true

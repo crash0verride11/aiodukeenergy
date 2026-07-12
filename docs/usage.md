@@ -7,7 +7,7 @@ Assuming that you've followed the {ref}`installations steps <installation>`, you
 Start by importing it:
 
 ```python
-import aiodukeenergy
+import aiodukeenergy_co
 ```
 
 TODO: Document usage

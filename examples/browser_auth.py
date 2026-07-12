@@ -22,7 +22,12 @@ import webbrowser
 
 import aiohttp
 
-from aiodukeenergy import Auth0Client, DukeEnergy, DukeEnergyAuth, DukeEnergyAuthError
+from aiodukeenergy_co import (
+    Auth0Client,
+    DukeEnergy,
+    DukeEnergyAuth,
+    DukeEnergyAuthError,
+)
 
 
 async def main() -> None:
@@ -125,7 +130,9 @@ async def main() -> None:
             print("Use these tokens with the library:")
             print()
             print("import aiohttp")
-            print("from aiodukeenergy import Auth0Client, DukeEnergy, DukeEnergyAuth")
+            print(
+                "from aiodukeenergy_co import Auth0Client, DukeEnergy, DukeEnergyAuth"
+            )
             print()
             print("async with aiohttp.ClientSession() as session:")
             print("    auth0_client = Auth0Client(session)")

@@ -3,7 +3,7 @@ name: CI
 on:
   push:
     branches:
-      - main
+      - aiodukeenergy-co
   pull_request:
 
 concurrency:
@@ -90,15 +90,15 @@ jobs:
       # Do a dry run of PSR
       - name: Test release
         uses: python-semantic-release/python-semantic-release@v9.8.1
-        if: github.ref_name != 'main'
+        if: github.ref_name != 'aiodukeenergy-co'
         with:
           root_options: --noop
 
-      # On main branch: actual PSR + upload to PyPI & GitHub
+      # On the release branch: actual PSR + upload to PyPI & GitHub
       - name: Release
         uses: python-semantic-release/python-semantic-release@v9.8.1
         id: release
-        if: github.ref_name == 'main'
+        if: github.ref_name == 'aiodukeenergy-co'
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
 

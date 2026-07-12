@@ -1,4 +1,4 @@
-# Welcome to aiodukeenergy documentation!
+# Welcome to aiodukeenergy-co documentation!
 
 ```{toctree}
 :caption: Installation & Usage

@@ -1,14 +1,11 @@
-# aiodukeenergy
+# aiodukeenergy-co
 
 <p align="center">
-  <a href="https://github.com/hunterjm/aiodukeenergy/actions/workflows/ci.yml?query=branch%3Amain">
-    <img src="https://img.shields.io/github/actions/workflow/status/hunterjm/aiodukeenergy/ci.yml?branch=main&label=CI&logo=github&style=flat-square" alt="CI Status" >
+  <a href="https://github.com/crash0verride11/aiodukeenergy/actions/workflows/ci.yml?query=branch%3Aaiodukeenergy-co">
+    <img src="https://img.shields.io/github/actions/workflow/status/crash0verride11/aiodukeenergy/ci.yml?branch=aiodukeenergy-co&label=CI&logo=github&style=flat-square" alt="CI Status" >
   </a>
-  <a href="https://aiodukeenergy.readthedocs.io">
-    <img src="https://img.shields.io/readthedocs/aiodukeenergy.svg?logo=read-the-docs&logoColor=fff&style=flat-square" alt="Documentation Status">
-  </a>
-  <a href="https://codecov.io/gh/hunterjm/aiodukeenergy">
-    <img src="https://img.shields.io/codecov/c/github/hunterjm/aiodukeenergy.svg?logo=codecov&logoColor=fff&style=flat-square" alt="Test coverage percentage">
+  <a href="https://codecov.io/gh/crash0verride11/aiodukeenergy">
+    <img src="https://img.shields.io/codecov/c/github/crash0verride11/aiodukeenergy.svg?logo=codecov&logoColor=fff&style=flat-square" alt="Test coverage percentage">
   </a>
 </p>
 <p align="center">
@@ -23,18 +20,16 @@
   </a>
 </p>
 <p align="center">
-  <a href="https://pypi.org/project/aiodukeenergy/">
-    <img src="https://img.shields.io/pypi/v/aiodukeenergy.svg?logo=python&logoColor=fff&style=flat-square" alt="PyPI Version">
+  <a href="https://pypi.org/project/aiodukeenergy-co/">
+    <img src="https://img.shields.io/pypi/v/aiodukeenergy-co.svg?logo=python&logoColor=fff&style=flat-square" alt="PyPI Version">
   </a>
-  <img src="https://img.shields.io/pypi/pyversions/aiodukeenergy.svg?style=flat-square&logo=python&amp;logoColor=fff" alt="Supported Python versions">
-  <img src="https://img.shields.io/pypi/l/aiodukeenergy.svg?style=flat-square" alt="License">
+  <img src="https://img.shields.io/pypi/pyversions/aiodukeenergy-co.svg?style=flat-square&logo=python&amp;logoColor=fff" alt="Supported Python versions">
+  <img src="https://img.shields.io/pypi/l/aiodukeenergy-co.svg?style=flat-square" alt="License">
 </p>
 
 ---
 
-**Documentation**: <a href="https://aiodukeenergy.readthedocs.io" target="_blank">https://aiodukeenergy.readthedocs.io </a>
-
-**Source Code**: <a href="https://github.com/hunterjm/aiodukeenergy" target="_blank">https://github.com/hunterjm/aiodukeenergy </a>
+**Source Code**: <a href="https://github.com/crash0verride11/aiodukeenergy" target="_blank">https://github.com/crash0verride11/aiodukeenergy </a>
 
 ---
 
@@ -44,7 +39,7 @@ Asyncio Duke Energy
 
 Install this via pip (or your favourite package manager):
 
-`pip install aiodukeenergy`
+`pip install aiodukeenergy-co`
 
 ## Usage
 
@@ -58,7 +53,7 @@ capture the mobile app's custom redirect URL.
 
    #### chrome-extension
 
-   - Download the [latest chrome-extension.zip](https://github.com/hunterjm/aiodukeenergy/releases/latest/download/chrome-extension.zip) from releases (or use `./chrome-extension/` from source)
+   - Download the [latest chrome-extension.zip](https://github.com/crash0verride11/aiodukeenergy/releases/latest/download/chrome-extension.zip) from releases (or use `./chrome-extension/` from source)
    - Extract the zip file
    - Open Chrome and navigate to `chrome://extensions/`
    - Enable "Developer mode"
@@ -97,7 +92,7 @@ Once you have tokens, use them with the library:
 ```python
 import asyncio
 import aiohttp
-from aiodukeenergy import Auth0Client, DukeEnergy, DukeEnergyAuth
+from aiodukeenergy_co import Auth0Client, DukeEnergy, DukeEnergyAuth
 
 
 async def main():
@@ -138,7 +133,7 @@ You can also integrate the OAuth flow into your own application:
 import asyncio
 import webbrowser
 import aiohttp
-from aiodukeenergy import Auth0Client, DukeEnergy, DukeEnergyAuth
+from aiodukeenergy_co import Auth0Client, DukeEnergy, DukeEnergyAuth
 
 
 async def main():

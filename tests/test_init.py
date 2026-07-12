@@ -1,4 +1,4 @@
-"""Tests for aiodukeenergy library."""
+"""Tests for aiodukeenergy_co library."""
 
 import re
 from datetime import datetime, timedelta, timezone
@@ -8,7 +8,7 @@ import aiohttp
 import pytest
 from aioresponses import aioresponses
 
-from aiodukeenergy import (
+from aiodukeenergy_co import (
     AbstractDukeEnergyAuth,
     Auth0Client,
     DukeEnergy,
@@ -411,7 +411,7 @@ class TestCodeExchange:
     @pytest.mark.asyncio
     async def test_get_id_token_without_authentication(self):
         """Test that async_get_id_token fails without authentication."""
-        from aiodukeenergy import DukeEnergyAuthError
+        from aiodukeenergy_co import DukeEnergyAuthError
 
         async with aiohttp.ClientSession() as session:
             auth0_client = Auth0Client(session)
@@ -743,7 +743,7 @@ class TestErrorHandling:
     @pytest.mark.asyncio
     async def test_get_id_token_without_authentication(self):
         """Test that async_get_id_token fails without authentication."""
-        from aiodukeenergy import DukeEnergyAuthError
+        from aiodukeenergy_co import DukeEnergyAuthError
 
         async with aiohttp.ClientSession() as session:
             auth0_client = Auth0Client(session)
@@ -755,7 +755,7 @@ class TestErrorHandling:
     @pytest.mark.asyncio
     async def test_token_refresh_with_expired_token_no_refresh(self):
         """Test token refresh with expired token and no refresh token."""
-        from aiodukeenergy import DukeEnergyTokenExpiredError
+        from aiodukeenergy_co import DukeEnergyTokenExpiredError
 
         expired_token = _create_test_jwt(exp_offset_seconds=-3600)
         expired_id_token = _create_test_jwt(exp_offset_seconds=-3600)
@@ -776,7 +776,7 @@ class TestErrorHandling:
     @pytest.mark.asyncio
     async def test_auth0_token_exchange_failure(self):
         """Test Auth0 token exchange returns error on failure."""
-        from aiodukeenergy import DukeEnergyAuthError
+        from aiodukeenergy_co import DukeEnergyAuthError
 
         async with aiohttp.ClientSession() as session:
             auth0_client = Auth0Client(session)
@@ -796,7 +796,7 @@ class TestErrorHandling:
     @pytest.mark.asyncio
     async def test_duke_energy_token_exchange_failure(self, mock_auth0_token_response):
         """Test Duke Energy token exchange returns error on failure."""
-        from aiodukeenergy import DukeEnergyAuthError
+        from aiodukeenergy_co import DukeEnergyAuthError
 
         async with aiohttp.ClientSession() as session:
             auth0_client = Auth0Client(session)
@@ -823,7 +823,7 @@ class TestErrorHandling:
     @pytest.mark.asyncio
     async def test_auth0_token_refresh_failure(self):
         """Test Auth0 token refresh returns error on failure."""
-        from aiodukeenergy import DukeEnergyTokenExpiredError
+        from aiodukeenergy_co import DukeEnergyTokenExpiredError
 
         expired_token = _create_test_jwt(exp_offset_seconds=-3600)
         expired_id_token = _create_test_jwt(exp_offset_seconds=-3600)
@@ -969,7 +969,7 @@ class TestUtilityFunctions:
 
     def test_extract_code_from_url_valid(self):
         """Test extracting authorization code from valid redirect URL."""
-        from aiodukeenergy.auth0 import extract_code_from_url
+        from aiodukeenergy_co.auth0 import extract_code_from_url
 
         url = "https://login.duke-energy.com/ios/com.duke-energy.app/callback?code=abc123&state=xyz"
         code = extract_code_from_url(url)
@@ -977,7 +977,7 @@ class TestUtilityFunctions:
 
     def test_extract_code_from_url_no_code(self):
         """Test extracting authorization code when not present."""
-        from aiodukeenergy.auth0 import extract_code_from_url
+        from aiodukeenergy_co.auth0 import extract_code_from_url
 
         url = "https://login.duke-energy.com/ios/com.duke-energy.app/callback?state=xyz"
         code = extract_code_from_url(url)
@@ -985,7 +985,7 @@ class TestUtilityFunctions:
 
     def test_extract_code_from_url_with_ampersand(self):
         """Test extracting authorization code with trailing parameters."""
-        from aiodukeenergy.auth0 import extract_code_from_url
+        from aiodukeenergy_co.auth0 import extract_code_from_url
 
         url = "https://login.duke-energy.com/ios/com.duke-energy.app/callback?code=test_code_123&state=abc&other=param"
         code = extract_code_from_url(url)
@@ -993,21 +993,21 @@ class TestUtilityFunctions:
 
     def test_is_token_expired_valid_token(self):
         """Test is_token_expired with a valid non-expired token."""
-        from aiodukeenergy.auth0 import is_token_expired
+        from aiodukeenergy_co.auth0 import is_token_expired
 
         token = _create_test_jwt(exp_offset_seconds=3600)  # 1 hour in future
         assert is_token_expired(token) is False
 
     def test_is_token_expired_expired_token(self):
         """Test is_token_expired with an expired token."""
-        from aiodukeenergy.auth0 import is_token_expired
+        from aiodukeenergy_co.auth0 import is_token_expired
 
         token = _create_test_jwt(exp_offset_seconds=-3600)  # 1 hour ago
         assert is_token_expired(token) is True
 
     def test_is_token_expired_invalid_token(self):
         """Test is_token_expired with an invalid token."""
-        from aiodukeenergy.auth0 import is_token_expired
+        from aiodukeenergy_co.auth0 import is_token_expired
 
         assert is_token_expired("invalid.token") is True
         assert is_token_expired("") is True
@@ -1016,7 +1016,7 @@ class TestUtilityFunctions:
         """Test is_token_expired with token missing exp claim."""
         import jwt as pyjwt
 
-        from aiodukeenergy.auth0 import is_token_expired
+        from aiodukeenergy_co.auth0 import is_token_expired
 
         # Create token without exp claim
         payload = {"email": "test@example.com"}
@@ -1025,7 +1025,7 @@ class TestUtilityFunctions:
 
     def test_decode_token(self):
         """Test decode_token returns payload."""
-        from aiodukeenergy.auth0 import decode_token
+        from aiodukeenergy_co.auth0 import decode_token
 
         token = _create_test_jwt()
         payload = decode_token(token)
@@ -1039,7 +1039,7 @@ class TestAuth0Client:
     @pytest.mark.asyncio
     async def test_exchange_code_without_verifier(self):
         """Test exchange_code raises error when verifier not set."""
-        from aiodukeenergy import Auth0Client, DukeEnergyAuthError
+        from aiodukeenergy_co import Auth0Client, DukeEnergyAuthError
 
         async with aiohttp.ClientSession() as session:
             auth0 = Auth0Client(session)
@@ -1050,7 +1050,7 @@ class TestAuth0Client:
     @pytest.mark.asyncio
     async def test_get_user_info(self):
         """Test getting user info from Auth0."""
-        from aiodukeenergy import Auth0Client
+        from aiodukeenergy_co import Auth0Client
 
         async with aiohttp.ClientSession() as session:
             auth0 = Auth0Client(session)
@@ -1072,7 +1072,7 @@ class TestDukeEnergyAuthTokenManagement:
     @pytest.mark.asyncio
     async def test_token_property_returns_none_when_not_authenticated(self):
         """Test token property returns None when not authenticated."""
-        from aiodukeenergy import Auth0Client, DukeEnergyAuth
+        from aiodukeenergy_co import Auth0Client, DukeEnergyAuth
 
         async with aiohttp.ClientSession() as session:
             auth0 = Auth0Client(session)
@@ -1082,7 +1082,7 @@ class TestDukeEnergyAuthTokenManagement:
     @pytest.mark.asyncio
     async def test_restore_token(self):
         """Test restore_token restores tokens and user info."""
-        from aiodukeenergy import Auth0Client, DukeEnergyAuth
+        from aiodukeenergy_co import Auth0Client, DukeEnergyAuth
 
         async with aiohttp.ClientSession() as session:
             auth0 = Auth0Client(session)
@@ -1107,7 +1107,7 @@ class TestDukeEnergyAuthTokenManagement:
     @pytest.mark.asyncio
     async def test_restore_token_with_invalid_id_token(self):
         """Test restore_token handles invalid id_token gracefully."""
-        from aiodukeenergy import Auth0Client, DukeEnergyAuth
+        from aiodukeenergy_co import Auth0Client, DukeEnergyAuth
 
         async with aiohttp.ClientSession() as session:
             auth0 = Auth0Client(session)
@@ -1127,7 +1127,7 @@ class TestDukeEnergyAuthTokenManagement:
     @pytest.mark.asyncio
     async def test_duke_token_expired_without_expiry_info(self):
         """Test DE token is considered expired when no expiry info."""
-        from aiodukeenergy import Auth0Client, DukeEnergyAuth
+        from aiodukeenergy_co import Auth0Client, DukeEnergyAuth
 
         async with aiohttp.ClientSession() as session:
             auth0 = Auth0Client(session)
@@ -1144,7 +1144,7 @@ class TestDukeEnergyAuthTokenManagement:
     @pytest.mark.asyncio
     async def test_duke_token_with_server_issued_at(self, mock_auth0_token_response):
         """Test Duke token exchange uses server's issued_at timestamp."""
-        from aiodukeenergy import Auth0Client, DukeEnergyAuth
+        from aiodukeenergy_co import Auth0Client, DukeEnergyAuth
 
         async with aiohttp.ClientSession() as session:
             auth0 = Auth0Client(session)
@@ -1180,7 +1180,7 @@ class TestImports:
 
     def test_package_exports(self):
         """Test that the package exports the expected symbols."""
-        from aiodukeenergy import (
+        from aiodukeenergy_co import (
             AbstractDukeEnergyAuth,
             Auth0Client,
             DukeEnergy,
@@ -1200,13 +1200,13 @@ class TestImports:
 
     def test_duke_energy_auth_is_subclass_of_abstract(self):
         """Test that DukeEnergyAuth is a subclass of AbstractDukeEnergyAuth."""
-        from aiodukeenergy import AbstractDukeEnergyAuth, DukeEnergyAuth
+        from aiodukeenergy_co import AbstractDukeEnergyAuth, DukeEnergyAuth
 
         assert issubclass(DukeEnergyAuth, AbstractDukeEnergyAuth)
 
     def test_version_available(self):
         """Test that version is available."""
-        from aiodukeenergy import __version__
+        from aiodukeenergy_co import __version__
 
         assert __version__ is not None
         assert isinstance(__version__, str)
