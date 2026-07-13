@@ -273,6 +273,83 @@ class DukeEnergy:
 
         return {"data": data, "missing": missing}
 
+    async def get_invoices(self, account_number: str) -> list[dict[str, Any]]:
+        """
+        Get the invoice list for an account, most recent first.
+
+        :param account_number: The account number.
+        :returns: List of invoice dictionaries.
+        """
+        if not self._accounts:
+            await self.get_accounts()
+
+        account = self._accounts.get(account_number) if self._accounts else None
+
+        if account is None:
+            raise ValueError(f"Account {account_number} not found")
+
+        result = await self._get_json(
+            _BASE_URL.joinpath("invoice-list"),
+            {
+                "srcSysCd": account["srcSysCd"],
+                "srcAcctId": account["srcAcctId"],
+            },
+        )
+        return result["invoices"]
+
+    async def get_monthly_usage(
+        self,
+        serial_number: str,
+        period: Literal["DAY", "WEEK", "BILLINGCYCLE"] = "BILLINGCYCLE",
+        start_date: datetime | None = None,
+    ) -> dict[str, Any]:
+        """
+        Get summarized usage and bill comparison from Duke Energy.
+
+        Returns a summary for this period, the last period, and the same
+        period one year ago, each with usage, bill, days, and averageTemp.
+
+        For BILLINGCYCLE, ``start_date`` should be the current cycle's start:
+        the most recent invoice's ``billEndDate`` plus one day. Fetch invoices
+        once with :meth:`get_invoices` and reuse the derived date across meters
+        on the same account. When omitted, ``start_date`` defaults to yesterday,
+        which only returns the yesterday's usage for 'this bill cycle'.
+
+        :param serial_number: The serial number of the meter.
+        :param period: The period (DAY, WEEK, or BILLINGCYCLE).
+        :param start_date: The period start date. Defaults to yesterday.
+        :returns: Dictionary with 'thisPeriod', 'lastPeriod', and
+            'lastYearPeriod' keys.
+        """
+        if not self._meters:
+            await self.get_meters()
+
+        meter = self._meters.get(serial_number) if self._meters else None
+
+        if meter is None:
+            raise ValueError(f"Meter {serial_number} not found")
+
+        # endDate is always yesterday; startDate defaults to it when not given.
+        end_date = datetime.now() - timedelta(days=1)
+        if start_date is None:
+            start_date = end_date
+
+        return await self._post_json(
+            _BASE_URL.joinpath("account", "usage", "monthly"),
+            {
+                "srcSysCd": meter["account"]["srcSysCd"],
+                "srcAcctId": meter["account"]["srcAcctId"],
+                "serviceType": meter["serviceType"],
+                "unitOfMeasure": "CCF" if meter["serviceType"] == "GAS" else "KWH",
+                "meterNumber": meter["serialNum"],
+                "isCertifiedSmartMeter": meter["isCertifiedSmartMeter"],
+                "periodType": period,
+                "startDate": start_date.strftime(_DATE_FORMAT),
+                "endDate": end_date.strftime(_DATE_FORMAT),
+                "zipCode": meter["account"]["serviceAddressParsed"]["zipCode"],
+            },
+        )
+
     async def _get_json(
         self, url: yarl.URL, params: dict[str, Any] | None = None
     ) -> dict[str, Any]:

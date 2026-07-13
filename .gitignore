@@ -138,4 +138,10 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/
+
+#authentication tokens
+*duke_tokens.json
+
+#misc
 .DS_Store
+examples/monthly_usage.py
