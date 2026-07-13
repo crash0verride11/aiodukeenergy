@@ -6,6 +6,7 @@ from typing import Any
 
 import aiohttp
 import pytest
+import yarl
 from aioresponses import aioresponses
 
 from aiodukeenergy_co import (
@@ -175,6 +176,29 @@ def mock_daily_usage_data():
         )
 
     return daily_data
+
+
+@pytest.fixture
+def mock_invoice_list_response():
+    """Create a mock invoice list response (most recent first)."""
+    return {
+        "invoices": [
+            {
+                "billStartDate": "2024-05-28",
+                "billEndDate": "2024-06-26",
+                "billDays": "30",
+                "invAmt": "100.000",
+                "invId": "200000000002",
+            },
+            {
+                "billStartDate": "2024-04-29",
+                "billEndDate": "2024-05-27",
+                "billDays": "29",
+                "invAmt": "90.000",
+                "invId": "200000000001",
+            },
+        ],
+    }
 
 
 @pytest.fixture
@@ -692,14 +716,163 @@ class TestUsageAPI:
                 assert missing_day in result["missing"]
 
     @pytest.mark.asyncio
+    async def test_get_invoices(
+        self,
+        mock_duke_token_response,
+        mock_account_list_response,
+        mock_account_details_response,
+        mock_invoice_list_response,
+    ):
+        """Test getting the invoice list for an account."""
+        test_token = _create_test_jwt(exp_offset_seconds=3600)
+        test_id_token = _create_test_jwt(exp_offset_seconds=3600)
+
+        async with aiohttp.ClientSession() as session:
+            auth0_client = Auth0Client(session)
+            auth = DukeEnergyAuth(
+                session,
+                auth0_client,
+                access_token=test_token,
+                refresh_token="refresh",  # noqa: S106
+                id_token=test_id_token,
+            )
+
+            with aioresponses() as mocked:
+                setup_auth_mocks(mocked, mock_duke_token_response)
+                setup_api_mocks(
+                    mocked,
+                    mock_account_list_response,
+                    mock_account_details_response,
+                )
+                pattern = re.compile(
+                    r"^https://api-v2\.cma\.duke-energy\.app/invoice-list"
+                )
+                mocked.get(pattern, payload=mock_invoice_list_response, repeat=True)
+
+                client = DukeEnergy(auth)
+                await client.get_accounts()
+
+                invoices = await client.get_invoices("accountNumber")
+
+                assert len(invoices) == 2
+                assert invoices[0]["billEndDate"] == "2024-06-26"
+
+    @pytest.mark.asyncio
+    async def test_get_invoices_invalid_account(
+        self,
+        mock_duke_token_response,
+        mock_account_list_response,
+        mock_account_details_response,
+    ):
+        """Test that get_invoices raises ValueError for an unknown account."""
+        test_token = _create_test_jwt(exp_offset_seconds=3600)
+        test_id_token = _create_test_jwt(exp_offset_seconds=3600)
+
+        async with aiohttp.ClientSession() as session:
+            auth0_client = Auth0Client(session)
+            auth = DukeEnergyAuth(
+                session,
+                auth0_client,
+                access_token=test_token,
+                refresh_token="refresh",  # noqa: S106
+                id_token=test_id_token,
+            )
+
+            with aioresponses() as mocked:
+                setup_auth_mocks(mocked, mock_duke_token_response)
+                setup_api_mocks(
+                    mocked,
+                    mock_account_list_response,
+                    mock_account_details_response,
+                )
+
+                client = DukeEnergy(auth)
+                await client.get_accounts()
+
+                with pytest.raises(ValueError, match="Account bogus not found"):
+                    await client.get_invoices("bogus")
+
+    @pytest.mark.asyncio
     async def test_monthly_usage(
+        self,
+        mock_duke_token_response,
+        mock_account_list_response,
+        mock_account_details_response,
+        mock_invoice_list_response,
+        mock_monthly_usage_data,
+    ):
+        """Test getting summarized monthly usage."""
+        test_token = _create_test_jwt(exp_offset_seconds=3600)
+        test_id_token = _create_test_jwt(exp_offset_seconds=3600)
+
+        async with aiohttp.ClientSession() as session:
+            auth0_client = Auth0Client(session)
+            auth = DukeEnergyAuth(
+                session,
+                auth0_client,
+                access_token=test_token,
+                refresh_token="refresh",  # noqa: S106
+                id_token=test_id_token,
+            )
+
+            with aioresponses() as mocked:
+                setup_auth_mocks(mocked, mock_duke_token_response)
+                setup_api_mocks(
+                    mocked,
+                    mock_account_list_response,
+                    mock_account_details_response,
+                )
+                invoice_pattern = re.compile(
+                    r"^https://api-v2\.cma\.duke-energy\.app/invoice-list"
+                )
+                mocked.get(
+                    invoice_pattern, payload=mock_invoice_list_response, repeat=True
+                )
+                pattern = re.compile(
+                    r"^https://api-v2\.cma\.duke-energy\.app/account/usage/monthly"
+                )
+                mocked.post(pattern, payload=mock_monthly_usage_data, repeat=True)
+
+                client = DukeEnergy(auth)
+
+                meters = await client.get_meters()
+                serial_number = next(iter(meters.keys()))
+
+                # Caller derives the cycle start from the latest invoice's
+                # billEndDate + 1 day and passes it in.
+                invoices = await client.get_invoices("accountNumber")
+                start_date = datetime.strptime(
+                    invoices[0]["billEndDate"], "%Y-%m-%d"
+                ) + timedelta(days=1)
+                result = await client.get_monthly_usage(
+                    serial_number, "BILLINGCYCLE", start_date
+                )
+
+                assert result == mock_monthly_usage_data
+                # A null bill (current, unbilled period) surfaces as None
+                assert result["thisPeriod"]["bill"] is None
+                assert result["lastPeriod"]["bill"] == 100.00
+
+                # The passed-in startDate is sent; endDate is yesterday.
+                monthly_url = yarl.URL(
+                    "https://api-v2.cma.duke-energy.app/account/usage/monthly"
+                )
+                monthly_request = mocked.requests[("POST", monthly_url)][-1]
+                sent = monthly_request.kwargs["json"]
+                assert sent["startDate"] == "06/27/2024"
+                assert sent["periodType"] == "BILLINGCYCLE"
+                yesterday = datetime.now() - timedelta(days=1)
+                assert sent["endDate"] == yesterday.strftime("%m/%d/%Y")
+
+    @pytest.mark.asyncio
+    async def test_monthly_usage_defaults_to_yesterday(
         self,
         mock_duke_token_response,
         mock_account_list_response,
         mock_account_details_response,
         mock_monthly_usage_data,
     ):
-        """Test getting summarized monthly usage."""
+        """Test that omitting start_date sends yesterday for both dates."""
         test_token = _create_test_jwt(exp_offset_seconds=3600)
         test_id_token = _create_test_jwt(exp_offset_seconds=3600)
 
@@ -726,16 +899,18 @@ class TestUsageAPI:
                 mocked.post(pattern, payload=mock_monthly_usage_data, repeat=True)
 
                 client = DukeEnergy(auth)
-
                 meters = await client.get_meters()
                 serial_number = next(iter(meters.keys()))
 
-                result = await client.get_monthly_usage(serial_number)
+                await client.get_monthly_usage(serial_number)
 
-                assert result == mock_monthly_usage_data
-                # A null bill (current, unbilled period) surfaces as None
-                assert result["thisPeriod"]["bill"] is None
-                assert result["lastPeriod"]["bill"] == 100.00
+                monthly_url = yarl.URL(
+                    "https://api-v2.cma.duke-energy.app/account/usage/monthly"
+                )
+                sent = mocked.requests[("POST", monthly_url)][-1].kwargs["json"]
+                yesterday = datetime.now() - timedelta(days=1)
+                assert sent["startDate"] == yesterday.strftime("%m/%d/%Y")
+                assert sent["endDate"] == yesterday.strftime("%m/%d/%Y")
 
     @pytest.mark.asyncio
     async def test_energy_usage_duplicate_hours(
