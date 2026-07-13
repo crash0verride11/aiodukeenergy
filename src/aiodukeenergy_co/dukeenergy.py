@@ -273,6 +273,51 @@ class DukeEnergy:
 
         return {"data": data, "missing": missing}
 
+    async def get_monthly_usage(
+        self,
+        serial_number: str,
+        period: Literal["DAY", "WEEK", "BILLINGCYCLE"] = "BILLINGCYCLE",
+    ) -> dict[str, Any]:
+        """
+        Get summarized usage and bill comparison from Duke Energy.
+
+        Returns a summary for this period, the last period, and the same
+        period one year ago, each with usage, bill, days, and averageTemp.
+
+        :param serial_number: The serial number of the meter.
+        :param period: The period (DAY, WEEK, or BILLINGCYCLE).
+        :returns: Dictionary with 'thisPeriod', 'lastPeriod', and
+            'lastYearPeriod' keys.
+        """
+        if not self._meters:
+            await self.get_meters()
+
+        meter = self._meters.get(serial_number) if self._meters else None
+
+        if meter is None:
+            raise ValueError(f"Meter {serial_number} not found")
+
+        # The app derives the billing cycle startDate, but we don't know how
+        # yet. Sending yesterday for both startDate and endDate (endDate is what
+        # the app sends) is confirmed to return correct data from the endpoint.
+        yesterday = datetime.now() - timedelta(days=1)
+
+        return await self._post_json(
+            _BASE_URL.joinpath("account", "usage", "monthly"),
+            {
+                "srcSysCd": meter["account"]["srcSysCd"],
+                "srcAcctId": meter["account"]["srcAcctId"],
+                "serviceType": meter["serviceType"],
+                "unitOfMeasure": "CCF" if meter["serviceType"] == "GAS" else "KWH",
+                "meterNumber": meter["serialNum"],
+                "isCertifiedSmartMeter": meter["isCertifiedSmartMeter"],
+                "periodType": period,
+                "startDate": yesterday.strftime(_DATE_FORMAT),
+                "endDate": yesterday.strftime(_DATE_FORMAT),
+                "zipCode": meter["account"]["serviceAddressParsed"]["zipCode"],
+            },
+        )
+
     async def _get_json(
         self, url: yarl.URL, params: dict[str, Any] | None = None
     ) -> dict[str, Any]:

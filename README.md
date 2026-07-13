@@ -179,6 +179,7 @@ asyncio.run(main())
   - `get_accounts()` - Get all accounts
   - `get_meters()` - Get all meters
   - `get_energy_usage(meter_serial, interval, view, start_date, end_date)` - Get usage data
+  - `get_monthly_usage(meter_serial, period)` - Get summarized usage/bill comparison (this period, last period, same period last year)
 
 ## Contributors ✨
 
