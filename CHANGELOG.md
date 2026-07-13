@@ -1,5 +1,24 @@
 # Changelog
 
+## v1.1.0 (2026-07-13)
+
+### Refactoring
+
+- Commit lint validation ([`15cb240`](https://github.com/crash0verride11/aiodukeenergy/commit/15cb2408fcc86aafd5136a2f99aeea1e0b16fa15))
+- Add get_invoice to use in get_monthly_usage ([`13c4f46`](https://github.com/crash0verride11/aiodukeenergy/commit/13c4f468ecdf3b8b8c3d785b474be6278be621c7))
+
+### Testing
+
+- Get_invoice_list ([`d01eabf`](https://github.com/crash0verride11/aiodukeenergy/commit/d01eabfa1d27ac7bb7e8de80ad3b9c1b9ce85035))
+
+### Documentation
+
+- New get_invoices method ([`6b95556`](https://github.com/crash0verride11/aiodukeenergy/commit/6b95556113f95d3c4dfbe6bdc3c5650ff353b18c))
+
+### Features
+
+- Add usage/monthly endpoint ([`955590c`](https://github.com/crash0verride11/aiodukeenergy/commit/955590cf0d33a07cd18bfce698fd3ad748e5f9dc))
+
 ## v1.0.0 (2026-07-12)
 
 ### Features
