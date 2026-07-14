@@ -311,6 +311,26 @@ class DukeEnergy:
         )
         return result["invoices"]
 
+    async def get_billing_payment_info(
+        self, include_closed: bool = True
+    ) -> dict[str, dict[str, Any]]:
+        """
+        Get billing and payment info for each account.
+
+        Each account includes its balance, dueDate, and abbreviatedBillStatus,
+        among other billing and payment details.
+
+        :param include_closed: Whether to include closed accounts.
+        :returns: Dictionary of account number to billing and payment info.
+        """
+        result = await self._get_json(
+            _BASE_URL.joinpath(
+                "billing-and-payment", "multi-account-payment", "info-v3"
+            ),
+            {"includeClosedAccounts": "1" if include_closed else "0"},
+        )
+        return {account["accountNumber"]: account for account in result["accounts"]}
+
     async def get_monthly_usage(
         self,
         serial_number: str,
