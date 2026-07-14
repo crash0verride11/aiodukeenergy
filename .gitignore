@@ -144,4 +144,3 @@ cython_debug/
 
 #misc
 .DS_Store
-*monthly_usage.py
