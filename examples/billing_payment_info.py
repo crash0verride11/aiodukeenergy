@@ -22,6 +22,7 @@ import json
 import sys
 import webbrowser
 from pathlib import Path
+from typing import Any
 
 import aiohttp
 
@@ -72,7 +73,7 @@ async def _authenticate(
     return auth
 
 
-def _print_account(account_number: str, info: dict) -> None:
+def _print_account(account_number: str, info: dict[str, Any]) -> None:
     """Pretty-print a single account's billing summary."""
     balance = info.get("balance")
     balance_str = "n/a" if balance is None else f"${balance:.2f}"

@@ -23,6 +23,7 @@ import sys
 import webbrowser
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Any, Literal, cast, get_args
 
 import aiohttp
 
@@ -34,7 +35,8 @@ from aiodukeenergy_co import (
 )
 
 TOKEN_FILE = Path("duke_tokens.json")
-VALID_PERIODS = ("DAY", "WEEK", "BILLINGCYCLE")
+MonthlyPeriod = Literal["DAY", "WEEK", "BILLINGCYCLE"]
+VALID_PERIODS = get_args(MonthlyPeriod)
 
 
 async def _authenticate(
@@ -74,7 +76,7 @@ async def _authenticate(
     return auth
 
 
-def _print_period(label: str, period: dict) -> None:
+def _print_period(label: str, period: dict[str, Any]) -> None:
     """Pretty-print a single period summary."""
     bill = period.get("bill")
     bill_str = "unbilled" if bill is None else f"${bill:.2f}"
@@ -87,10 +89,13 @@ def _print_period(label: str, period: dict) -> None:
 
 async def main() -> None:
     """Fetch and print summarized monthly usage for every meter."""
-    period = sys.argv[1].upper() if len(sys.argv) > 1 else "BILLINGCYCLE"
-    if period not in VALID_PERIODS:
-        print(f"Invalid period '{period}'. Choose one of: {', '.join(VALID_PERIODS)}")
+    period_arg = sys.argv[1].upper() if len(sys.argv) > 1 else "BILLINGCYCLE"
+    if period_arg not in VALID_PERIODS:
+        print(
+            f"Invalid period '{period_arg}'. Choose one of: {', '.join(VALID_PERIODS)}"
+        )
         sys.exit(1)
+    period = cast(MonthlyPeriod, period_arg)
 
     print("=" * 60)
     print(f"Duke Energy Monthly Usage Test (period={period})")
