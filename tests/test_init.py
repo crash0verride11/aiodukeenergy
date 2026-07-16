@@ -1098,6 +1098,75 @@ class TestUsageAPI:
                         energy_value != 900.0
                     ), "Should not have the duplicate hour value (900.0)"
 
+    @pytest.mark.asyncio
+    async def test_energy_usage_short_response(
+        self,
+        mock_duke_token_response,
+        mock_account_list_response,
+        mock_account_details_response,
+        mock_daily_usage_data,
+    ):
+        """
+        A response with fewer rows than the requested window must not raise.
+
+        Windows reaching past the meter's data horizon can come back partial
+        (rather than erroring); the uncovered tail is reported as missing and
+        the returned rows keep their usage/temperature row alignment.
+        """
+        test_token = _create_test_jwt(exp_offset_seconds=3600)
+        test_id_token = _create_test_jwt(exp_offset_seconds=3600)
+
+        # Keep only the first 5 of the 31 days the fixture builds.
+        short_data = mock_daily_usage_data[:5]
+
+        async with aiohttp.ClientSession() as session:
+            auth0_client = Auth0Client(session)
+            auth = DukeEnergyAuth(
+                session,
+                auth0_client,
+                access_token=test_token,
+                refresh_token="refresh",  # noqa: S106
+                id_token=test_id_token,
+            )
+
+            with aioresponses() as mocked:
+                setup_auth_mocks(mocked, mock_duke_token_response)
+                setup_api_mocks(
+                    mocked,
+                    mock_account_list_response,
+                    mock_account_details_response,
+                    short_data,
+                )
+
+                client = DukeEnergy(auth)
+
+                meters = await client.get_meters()
+                serial_number = next(iter(meters.keys()))
+
+                # Request the full 31-day window; only 5 rows come back.
+                start = datetime.strptime("2024-01-01", "%Y-%m-%d")
+                end = datetime.strptime("2024-01-31", "%Y-%m-%d")
+                result = await client.get_energy_usage(
+                    serial_number,
+                    "DAILY",
+                    "BILLINGCYCLE",
+                    start,
+                    end,
+                )
+
+                # Of the 5 returned rows, days 2, 4, and 5 carry data (the
+                # fixture zeroes day 1 via day*10 and day 3 explicitly);
+                # the zeroed days plus the uncovered tail are missing.
+                assert len(result["data"]) == 3
+                assert len(result["missing"]) == 28
+                for day in range(5, 31):
+                    assert start + timedelta(days=day) in result["missing"]
+
+                # Returned rows keep their own temperature (row alignment).
+                day2 = start + timedelta(days=1)
+                assert result["data"][day2]["energy"] == 10.0
+                assert result["data"][day2]["temperature"] == 30
+
 
 class TestErrorHandling:
     """Tests for error handling."""
