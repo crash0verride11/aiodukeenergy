@@ -1,5 +1,31 @@
 # Changelog
 
+## v1.2.0 (2026-07-16)
+
+### Documentation
+
+- Fix type checking mypi failures ([`358cd69`](https://github.com/crash0verride11/aiodukeenergy/commit/358cd69749e65a495b8ed4def95f4700484f9948))
+- Example get_monthly_usage and get_billing_payment_info methods ([`24f581a`](https://github.com/crash0verride11/aiodukeenergy/commit/24f581a39cd54189b4bc82bf606b8520cc81ed4a))
+- Add get_billing_payment_info ([`8134ecc`](https://github.com/crash0verride11/aiodukeenergy/commit/8134ecc97a3420f19f4555954ec05baf9ddec5e4))
+
+### Testing
+
+- Usage_len check fixes ([`3e3bb7c`](https://github.com/crash0verride11/aiodukeenergy/commit/3e3bb7c28d03053c73ddce66a482c58f94744d26))
+- Get_billing_payment_info ([`2300b76`](https://github.com/crash0verride11/aiodukeenergy/commit/2300b766058bf73abf69e4f3b27698ce99d83308))
+- Uv.lock ([`c18a256`](https://github.com/crash0verride11/aiodukeenergy/commit/c18a256b5e0aa03582fda94a75e30efb85229f8d))
+
+### Bug fixes
+
+- Usage_len regression ([`d642826`](https://github.com/crash0verride11/aiodukeenergy/commit/d6428269891ab97a29668e598a6c30d7f7fabd7c))
+
+### Features
+
+- Billing_payment_info ([`5ebbd31`](https://github.com/crash0verride11/aiodukeenergy/commit/5ebbd31c51210580a8b43c9a7956a21766390495))
+
+### Refactoring
+
+- Add monthly get_energy_usage ([`56cd512`](https://github.com/crash0verride11/aiodukeenergy/commit/56cd512ac8109875a83af736daf8d2383961eca7))
+
 ## v1.1.0 (2026-07-13)
 
 ### Refactoring
