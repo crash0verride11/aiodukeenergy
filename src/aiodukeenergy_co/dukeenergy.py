@@ -182,22 +182,17 @@ class DukeEnergy:
         if meter is None:
             raise ValueError(f"Meter {serial_number} not found")
 
-        # Duke Energy API expects year+month+day (hourly) or year+month (daily)
-        # from startDate, combined with the current time of day offset by 1.
-        # Monthly queries backdate to yesterday, keeping the current time.
-        if interval == "HOURLY":
+        # Duke uses the selected (start) date with the current date's H:M:S:M
+        # as the anchor for HOURLY and DAILY series.
+        # Monthly queries instead backdate to yesterday, keeping current time.
+        if interval == "MONTHLY":
+            graph_date = datetime.now(start_date.tzinfo) - timedelta(days=1)
+        else:
             graph_date = datetime.now(start_date.tzinfo).replace(
                 year=start_date.year,
                 month=start_date.month,
                 day=start_date.day,
             )
-        elif interval == "DAILY":
-            graph_date = datetime.now(start_date.tzinfo).replace(
-                year=start_date.year,
-                month=start_date.month,
-            ) - timedelta(days=1)
-        else:
-            graph_date = datetime.now(start_date.tzinfo) - timedelta(days=1)
 
         result = await self._post_json(
             _BASE_URL.joinpath("account", "usage", "graph"),
@@ -234,8 +229,15 @@ class DukeEnergy:
         usage_len = len(usage_array)
         num_expected_values = (end_date - start_date).days + 1
 
-        # Extract temperature data
-        temp = [usage_array[i]["temperatureAvg"] for i in range(num_expected_values)]
+        # Extract temperature data. The API can return fewer rows than the
+        # requested window covers (e.g. a window reaching past the meter's
+        # data horizon), so never index beyond what actually came back —
+        # temp is keyed by row index, so existing rows keep their alignment
+        # and absent tail rows fall back to None via the temp_len guard.
+        temp = [
+            usage_array[i]["temperatureAvg"]
+            for i in range(min(num_expected_values, usage_len))
+        ]
         temp_len = len(temp)
 
         # If interval is hourly, multiply the number of values by 24
@@ -265,6 +267,12 @@ class DukeEnergy:
                 else f"{date.month}/{date.strftime('%d/%Y')}"
             )
 
+            # Past the end of the returned array: the window reached beyond
+            # the rows the API sent back, so the remaining dates are missing.
+            if n >= usage_len:
+                missing.append(date)
+                continue
+
             # Skip duplicate dates
             if n > 0 and usage_array[n]["date"] == usage_array[n - 1]["date"]:
                 duplicates += 1
@@ -276,7 +284,7 @@ class DukeEnergy:
                 offset += 1
                 continue
 
-            if n >= usage_len or not float(usage_array[n]["usage"]) > 0:
+            if not float(usage_array[n]["usage"]) > 0:
                 missing.append(date)
                 continue
 
