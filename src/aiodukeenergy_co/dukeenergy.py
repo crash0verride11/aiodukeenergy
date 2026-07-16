@@ -151,8 +151,8 @@ class DukeEnergy:
     async def get_energy_usage(
         self,
         serial_number: str,
-        interval: Literal["HOURLY", "DAILY"],
-        period: Literal["DAY", "WEEK", "BILLINGCYCLE"],
+        interval: Literal["HOURLY", "DAILY", "MONTHLY"],
+        period: Literal["DAY", "WEEK", "YEAR", "BILLINGCYCLE"],
         start_date: datetime,
         end_date: datetime,
         include_temperature: bool = True,
@@ -160,9 +160,15 @@ class DukeEnergy:
         """
         Get energy usage from Duke Energy.
 
+        For HOURLY and DAILY intervals, 'data' maps each interval start to its
+        usage and temperature, and 'missing' lists gaps. For MONTHLY (use with
+        the YEAR period), 'data' is the raw list of completed billing cycle
+        entries, oldest first; the current cycle's start is the last
+        entry's endDate plus one day.
+
         :param serial_number: The serial number of the meter.
-        :param interval: The interval (HOURLY or DAILY).
-        :param period: The period (DAY, WEEK, or BILLINGCYCLE).
+        :param interval: The interval (HOURLY, DAILY, or MONTHLY).
+        :param period: The period (DAY, WEEK, YEAR, or BILLINGCYCLE).
         :param start_date: The start date.
         :param end_date: The end date.
         :param include_temperature: Whether to include temperature data.
@@ -176,6 +182,18 @@ class DukeEnergy:
         if meter is None:
             raise ValueError(f"Meter {serial_number} not found")
 
+        # Duke uses the selected (start) date with the current date's H:M:S:M
+        # as the anchor for HOURLY and DAILY series.
+        # Monthly queries instead backdate to yesterday, keeping current time.
+        if interval == "MONTHLY":
+            graph_date = datetime.now(start_date.tzinfo) - timedelta(days=1)
+        else:
+            graph_date = datetime.now(start_date.tzinfo).replace(
+                year=start_date.year,
+                month=start_date.month,
+                day=start_date.day,
+            )
+
         result = await self._post_json(
             _BASE_URL.joinpath("account", "usage", "graph"),
             {
@@ -186,21 +204,7 @@ class DukeEnergy:
                 "serviceType": meter["serviceType"],
                 "intervalFrequency": interval,
                 "periodType": period,
-                # Duke Energy API expects year+month+day (hourly) or year+month (daily)
-                # from startDate, combined with the current time of day offset by 1.
-                "date": (
-                    datetime.now(start_date.tzinfo).replace(
-                        year=start_date.year,
-                        month=start_date.month,
-                        day=start_date.day,
-                    )
-                    if interval == "HOURLY"
-                    else datetime.now(start_date.tzinfo).replace(
-                        year=start_date.year,
-                        month=start_date.month,
-                    )
-                    - timedelta(days=1)
-                ).isoformat(timespec="milliseconds"),
+                "date": graph_date.isoformat(timespec="milliseconds"),
                 "agrmtStartDt": datetime.strptime(
                     meter["agreementActiveDate"], "%Y-%m-%d"
                 ).strftime(_DATE_FORMAT),
@@ -216,12 +220,24 @@ class DukeEnergy:
             },
         )
 
+        if interval == "MONTHLY":
+            # Raw billing cycle entries; the per-interval reconstruction
+            # below only applies to HOURLY and DAILY series.
+            return {"data": result["usageArray"], "missing": []}
+
         usage_array = result["usageArray"]
         usage_len = len(usage_array)
         num_expected_values = (end_date - start_date).days + 1
 
-        # Extract temperature data
-        temp = [usage_array[i]["temperatureAvg"] for i in range(num_expected_values)]
+        # Extract temperature data. The API can return fewer rows than the
+        # requested window covers (e.g. a window reaching past the meter's
+        # data horizon), so never index beyond what actually came back —
+        # temp is keyed by row index, so existing rows keep their alignment
+        # and absent tail rows fall back to None via the temp_len guard.
+        temp = [
+            usage_array[i]["temperatureAvg"]
+            for i in range(min(num_expected_values, usage_len))
+        ]
         temp_len = len(temp)
 
         # If interval is hourly, multiply the number of values by 24
@@ -251,6 +267,12 @@ class DukeEnergy:
                 else f"{date.month}/{date.strftime('%d/%Y')}"
             )
 
+            # Past the end of the returned array: the window reached beyond
+            # the rows the API sent back, so the remaining dates are missing.
+            if n >= usage_len:
+                missing.append(date)
+                continue
+
             # Skip duplicate dates
             if n > 0 and usage_array[n]["date"] == usage_array[n - 1]["date"]:
                 duplicates += 1
@@ -262,7 +284,7 @@ class DukeEnergy:
                 offset += 1
                 continue
 
-            if n >= usage_len or not float(usage_array[n]["usage"]) > 0:
+            if not float(usage_array[n]["usage"]) > 0:
                 missing.append(date)
                 continue
 
@@ -296,6 +318,26 @@ class DukeEnergy:
             },
         )
         return result["invoices"]
+
+    async def get_billing_payment_info(
+        self, include_closed: bool = True
+    ) -> dict[str, dict[str, Any]]:
+        """
+        Get billing and payment info for each account.
+
+        Each account includes its balance, dueDate, and abbreviatedBillStatus,
+        among other billing and payment details.
+
+        :param include_closed: Whether to include closed accounts.
+        :returns: Dictionary of account number to billing and payment info.
+        """
+        result = await self._get_json(
+            _BASE_URL.joinpath(
+                "billing-and-payment", "multi-account-payment", "info-v3"
+            ),
+            {"includeClosedAccounts": "1" if include_closed else "0"},
+        )
+        return {account["accountNumber"]: account for account in result["accounts"]}
 
     async def get_monthly_usage(
         self,

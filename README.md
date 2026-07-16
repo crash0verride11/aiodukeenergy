@@ -180,6 +180,7 @@ asyncio.run(main())
   - `get_meters()` - Get all meters
   - `get_energy_usage(meter_serial, interval, view, start_date, end_date)` - Get usage data
   - `get_invoices(account_number)` - Get the account's invoice list (most recent first)
+  - `get_billing_payment_info(include_closed=True)` - Get billing/payment info per account (balance, dueDate, abbreviatedBillStatus, ...)
   - `get_monthly_usage(meter_serial, period, start_date)` - Get summarized usage/bill comparison (this period, last period, same period last year). For `BILLINGCYCLE`, pass `start_date` = latest invoice `billEndDate` + 1 day (derive once via `get_invoices` and reuse across meters on the account)
 
 ## Contributors ✨

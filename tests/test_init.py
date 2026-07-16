@@ -202,6 +202,30 @@ def mock_invoice_list_response():
 
 
 @pytest.fixture
+def mock_billing_payment_info_response():
+    """Create a mock billing and payment info response."""
+    return {
+        "accounts": [
+            {
+                "accountNumber": "accountNumber",
+                "balance": 100.00,
+                "dueDate": "2024-07-22",
+                "message": "The balance on this account is $100.00.",
+                "messageCode": "144",
+                "cpiMessagePriority": "LOW",
+                "serviceAddress": "123 Test St Test City, NC 00000",
+                "nickname": "",
+                "allowedPaymentMethods": ["BY_MAIL", "BANK_ACCOUNT"],
+                "abbreviatedBillStatus": "PAYMENT SCHEDULED",
+                "usePrimaryBPForDirectDebitAndKubra": False,
+                "hasSpeedpayFee": True,
+                "digitalPaymentIneligible": False,
+            }
+        ],
+    }
+
+
+@pytest.fixture
 def mock_monthly_usage_data():
     """Create mock summarized monthly usage data."""
     return {
@@ -313,6 +337,16 @@ def setup_auth_mocks(mocked, mock_duke_token_response, mock_auth0_token_response
             payload=mock_auth0_token_response,
             repeat=True,
         )
+
+
+def _billing_request_params(mocked):
+    """Return the query params of the last billing-and-payment info request."""
+    for (method, url), calls in mocked.requests.items():
+        if method == "GET" and "info-v3" in str(url):
+            # params may be recorded in kwargs or folded into the URL query.
+            params = calls[-1].kwargs.get("params")
+            return params if params is not None else url.query
+    raise AssertionError("No billing-and-payment info request recorded")
 
 
 @pytest.fixture
@@ -599,6 +633,87 @@ class TestAccountAPI:
                 assert len(meters) == 1
                 assert "serialNum" in meters
                 assert meters["serialNum"]["serviceType"] == "ELECTRIC"
+
+    @pytest.mark.asyncio
+    async def test_get_billing_payment_info(
+        self,
+        mock_duke_token_response,
+        mock_billing_payment_info_response,
+    ):
+        """Test getting billing and payment info for each account."""
+        test_token = _create_test_jwt(exp_offset_seconds=3600)
+        test_id_token = _create_test_jwt(exp_offset_seconds=3600)
+
+        async with aiohttp.ClientSession() as session:
+            auth0_client = Auth0Client(session)
+            auth = DukeEnergyAuth(
+                session,
+                auth0_client,
+                access_token=test_token,
+                refresh_token="refresh",  # noqa: S106
+                id_token=test_id_token,
+            )
+
+            with aioresponses() as mocked:
+                setup_auth_mocks(mocked, mock_duke_token_response)
+                pattern = re.compile(
+                    r"^https://api-v2\.cma\.duke-energy\.app/billing-and-payment"
+                    r"/multi-account-payment/info-v3"
+                )
+                mocked.get(
+                    pattern,
+                    payload=mock_billing_payment_info_response,
+                    repeat=True,
+                )
+
+                client = DukeEnergy(auth)
+                info = await client.get_billing_payment_info()
+
+                assert len(info) == 1
+                account = info["accountNumber"]
+                assert account["balance"] == 100.00
+                assert account["dueDate"] == "2024-07-22"
+                assert account["abbreviatedBillStatus"] == "PAYMENT SCHEDULED"
+
+                # Closed accounts are included by default (includeClosedAccounts=1)
+                assert _billing_request_params(mocked)["includeClosedAccounts"] == "1"
+
+    @pytest.mark.asyncio
+    async def test_get_billing_payment_info_exclude_closed(
+        self,
+        mock_duke_token_response,
+        mock_billing_payment_info_response,
+    ):
+        """Test excluding closed accounts sends includeClosedAccounts=0."""
+        test_token = _create_test_jwt(exp_offset_seconds=3600)
+        test_id_token = _create_test_jwt(exp_offset_seconds=3600)
+
+        async with aiohttp.ClientSession() as session:
+            auth0_client = Auth0Client(session)
+            auth = DukeEnergyAuth(
+                session,
+                auth0_client,
+                access_token=test_token,
+                refresh_token="refresh",  # noqa: S106
+                id_token=test_id_token,
+            )
+
+            with aioresponses() as mocked:
+                setup_auth_mocks(mocked, mock_duke_token_response)
+                pattern = re.compile(
+                    r"^https://api-v2\.cma\.duke-energy\.app/billing-and-payment"
+                    r"/multi-account-payment/info-v3"
+                )
+                mocked.get(
+                    pattern,
+                    payload=mock_billing_payment_info_response,
+                    repeat=True,
+                )
+
+                client = DukeEnergy(auth)
+                await client.get_billing_payment_info(include_closed=False)
+
+                assert _billing_request_params(mocked)["includeClosedAccounts"] == "0"
 
 
 class TestUsageAPI:
@@ -982,6 +1097,75 @@ class TestUsageAPI:
                     assert (
                         energy_value != 900.0
                     ), "Should not have the duplicate hour value (900.0)"
+
+    @pytest.mark.asyncio
+    async def test_energy_usage_short_response(
+        self,
+        mock_duke_token_response,
+        mock_account_list_response,
+        mock_account_details_response,
+        mock_daily_usage_data,
+    ):
+        """
+        A response with fewer rows than the requested window must not raise.
+
+        Windows reaching past the meter's data horizon can come back partial
+        (rather than erroring); the uncovered tail is reported as missing and
+        the returned rows keep their usage/temperature row alignment.
+        """
+        test_token = _create_test_jwt(exp_offset_seconds=3600)
+        test_id_token = _create_test_jwt(exp_offset_seconds=3600)
+
+        # Keep only the first 5 of the 31 days the fixture builds.
+        short_data = mock_daily_usage_data[:5]
+
+        async with aiohttp.ClientSession() as session:
+            auth0_client = Auth0Client(session)
+            auth = DukeEnergyAuth(
+                session,
+                auth0_client,
+                access_token=test_token,
+                refresh_token="refresh",  # noqa: S106
+                id_token=test_id_token,
+            )
+
+            with aioresponses() as mocked:
+                setup_auth_mocks(mocked, mock_duke_token_response)
+                setup_api_mocks(
+                    mocked,
+                    mock_account_list_response,
+                    mock_account_details_response,
+                    short_data,
+                )
+
+                client = DukeEnergy(auth)
+
+                meters = await client.get_meters()
+                serial_number = next(iter(meters.keys()))
+
+                # Request the full 31-day window; only 5 rows come back.
+                start = datetime.strptime("2024-01-01", "%Y-%m-%d")
+                end = datetime.strptime("2024-01-31", "%Y-%m-%d")
+                result = await client.get_energy_usage(
+                    serial_number,
+                    "DAILY",
+                    "BILLINGCYCLE",
+                    start,
+                    end,
+                )
+
+                # Of the 5 returned rows, days 2, 4, and 5 carry data (the
+                # fixture zeroes day 1 via day*10 and day 3 explicitly);
+                # the zeroed days plus the uncovered tail are missing.
+                assert len(result["data"]) == 3
+                assert len(result["missing"]) == 28
+                for day in range(5, 31):
+                    assert start + timedelta(days=day) in result["missing"]
+
+                # Returned rows keep their own temperature (row alignment).
+                day2 = start + timedelta(days=1)
+                assert result["data"][day2]["energy"] == 10.0
+                assert result["data"][day2]["temperature"] == 30
 
 
 class TestErrorHandling:
