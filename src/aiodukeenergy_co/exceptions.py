@@ -11,3 +11,7 @@ class DukeEnergyAuthError(DukeEnergyError):
 
 class DukeEnergyTokenExpiredError(DukeEnergyAuthError):
     """Exception raised when the access token has expired."""
+
+
+class DukeEnergyBlockedError(DukeEnergyError):
+    """Request refused before reaching the Duke Energy API (e.g. CDN/WAF)."""

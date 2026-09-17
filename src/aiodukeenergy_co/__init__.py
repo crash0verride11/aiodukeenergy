@@ -7,6 +7,7 @@ from .duke_auth import AbstractDukeEnergyAuth, DukeEnergyAuth
 from .dukeenergy import DukeEnergy
 from .exceptions import (
     DukeEnergyAuthError,
+    DukeEnergyBlockedError,
     DukeEnergyError,
     DukeEnergyTokenExpiredError,
 )
@@ -17,6 +18,7 @@ __all__ = [
     "DukeEnergy",
     "DukeEnergyAuth",
     "DukeEnergyAuthError",
+    "DukeEnergyBlockedError",
     "DukeEnergyError",
     "DukeEnergyTokenExpiredError",
 ]

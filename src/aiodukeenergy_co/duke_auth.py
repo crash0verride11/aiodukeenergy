@@ -27,7 +27,11 @@ import aiohttp
 import yarl
 
 from .auth0 import Auth0Client, decode_token, is_token_expired
-from .exceptions import DukeEnergyAuthError, DukeEnergyTokenExpiredError
+from .exceptions import (
+    DukeEnergyAuthError,
+    DukeEnergyBlockedError,
+    DukeEnergyTokenExpiredError,
+)
 
 if TYPE_CHECKING:
     from aiohttp import ClientResponse
@@ -175,6 +179,8 @@ class AbstractDukeEnergyAuth(ABC):
         exchanging the Auth0 id_token via their /login/auth-token endpoint.
 
         :param id_token: The Auth0 ID token to exchange.
+        :raises DukeEnergyBlockedError: If the request was refused before
+            reaching the API (non-JSON response, e.g. a CDN/WAF block page).
         :raises DukeEnergyAuthError: If the exchange fails.
         """
         credentials = f"{_DE_CLIENT_ID}:{_DE_CLIENT_SECRET}"
@@ -198,6 +204,21 @@ class AbstractDukeEnergyAuth(ABC):
         ) as response:
             if response.status != 200:
                 text = await response.text()
+                if response.content_type != "application/json":
+                    # Non-JSON means the request never reached Duke's API —
+                    # an edge/WAF refusal (Akamai "Access Denied"), not a
+                    # verdict on the token.
+                    _LOGGER.error(
+                        "Duke Energy token exchange blocked before reaching "
+                        "the API: %s (%s)",
+                        response.status,
+                        response.content_type,
+                    )
+                    _LOGGER.debug("Blocked response body: %s", text)
+                    raise DukeEnergyBlockedError(
+                        f"Duke Energy token exchange blocked: {response.status} "
+                        f"({response.content_type})"
+                    )
                 _LOGGER.error(
                     "Duke Energy token exchange failed: %s - %s",
                     response.status,

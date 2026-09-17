@@ -1252,6 +1252,74 @@ class TestErrorHandling:
                     await auth.authenticate_with_code("test_code", "verifier")
 
     @pytest.mark.asyncio
+    async def test_duke_energy_token_exchange_blocked(self, mock_auth0_token_response):
+        """Test a non-JSON edge/WAF refusal raises DukeEnergyBlockedError."""
+        from aiodukeenergy_co import DukeEnergyAuthError, DukeEnergyBlockedError
+
+        # A CDN block is not a token verdict, so consumers catching
+        # DukeEnergyAuthError (e.g. to trigger reauth) must not catch it.
+        assert not issubclass(DukeEnergyBlockedError, DukeEnergyAuthError)
+
+        async with aiohttp.ClientSession() as session:
+            auth0_client = Auth0Client(session)
+            auth = DukeEnergyAuth(session, auth0_client)
+
+            with aioresponses() as mocked:
+                mocked.post(
+                    "https://login.duke-energy.com/oauth/token",
+                    payload=mock_auth0_token_response,
+                )
+                # Akamai "Access Denied" page: HTML, never reached the origin.
+                # content_type must be explicit; aioresponses defaults to JSON.
+                mocked.post(
+                    "https://api-v2.cma.duke-energy.app/login/auth-token",
+                    status=403,
+                    content_type="text/html",
+                    body=(
+                        "<HTML><HEAD><TITLE>Access Denied</TITLE></HEAD>"
+                        "<BODY><H1>Access Denied</H1></BODY></HTML>"
+                    ),
+                )
+
+                with pytest.raises(
+                    DukeEnergyBlockedError,
+                    match=r"Duke Energy token exchange blocked: 403 \(text/html\)",
+                ):
+                    await auth.authenticate_with_code("test_code", "verifier")
+
+    @pytest.mark.asyncio
+    async def test_duke_energy_token_exchange_json_403_is_auth_error(
+        self, mock_auth0_token_response
+    ):
+        """Test a JSON 403 from the origin is still an auth error, not a block."""
+        from aiodukeenergy_co import DukeEnergyAuthError
+
+        async with aiohttp.ClientSession() as session:
+            auth0_client = Auth0Client(session)
+            auth = DukeEnergyAuth(session, auth0_client)
+
+            with aioresponses() as mocked:
+                mocked.post(
+                    "https://login.duke-energy.com/oauth/token",
+                    payload=mock_auth0_token_response,
+                )
+                # Same status as the blocked case; the split is on content type.
+                mocked.post(
+                    "https://api-v2.cma.duke-energy.app/login/auth-token",
+                    status=403,
+                    payload={
+                        "status": 403,
+                        "error": "Forbidden",
+                        "path": "/login/auth-token",
+                    },
+                )
+
+                with pytest.raises(
+                    DukeEnergyAuthError, match="Duke Energy token exchange failed"
+                ):
+                    await auth.authenticate_with_code("test_code", "verifier")
+
+    @pytest.mark.asyncio
     async def test_auth0_token_refresh_failure(self):
         """Test Auth0 token refresh returns error on failure."""
         from aiodukeenergy_co import DukeEnergyTokenExpiredError
@@ -1617,6 +1685,7 @@ class TestImports:
             DukeEnergy,
             DukeEnergyAuth,
             DukeEnergyAuthError,
+            DukeEnergyBlockedError,
             DukeEnergyError,
             DukeEnergyTokenExpiredError,
         )
@@ -1627,6 +1696,7 @@ class TestImports:
         assert DukeEnergyAuth is not None
         assert DukeEnergyError is not None
         assert DukeEnergyAuthError is not None
+        assert DukeEnergyBlockedError is not None
         assert DukeEnergyTokenExpiredError is not None
 
     def test_duke_energy_auth_is_subclass_of_abstract(self):
