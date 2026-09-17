@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-__version__ = "1.2.0"
+__version__ = "1.2.1"
 
 from .auth0 import Auth0Client
 from .duke_auth import AbstractDukeEnergyAuth, DukeEnergyAuth
