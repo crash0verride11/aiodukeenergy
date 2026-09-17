@@ -1,6 +1,24 @@
 # Changelog
 
+## v1.3.0 (2026-09-17)
+
+### Bug fixes
+
+- Skip unparseable commits in changelog template ([`d0e9047`](https://github.com/crash0verride11/aiodukeenergy/commit/d0e904717521686df26a10ec8f562b8618809492))
+
+### Features
+
+- Raise dukeenergyblockederror for edge/waf refusals on token exchange ([`714f433`](https://github.com/crash0verride11/aiodukeenergy/commit/714f433b273005610a59a57378b42a0c6d830c0f))
+
+### Refactoring
+
+- Hoist user-agent into per-module constant ([`e04d5b4`](https://github.com/crash0verride11/aiodukeenergy/commit/e04d5b418dcd7093bedb26941431d59d5f8d6f9b))
+
 ## v1.2.1 (2026-09-17)
+
+### Refactoring
+
+- Hoist user-agent into per-module constant ([`b65dc40`](https://github.com/crash0verride11/aiodukeenergy/commit/b65dc40af6dc2b9af8ec86e3bc992220d41e758b))
 
 ### Bug fixes
 
