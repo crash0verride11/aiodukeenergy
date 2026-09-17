@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.2.1 (2026-09-17)
+
+### Bug fixes
+
+- Blocked user agent ([`afb20bb`](https://github.com/crash0verride11/aiodukeenergy/commit/afb20bbf8ea3591fbf98669b4bbb5712efbf5e29))
+
 ## v1.2.0 (2026-07-16)
 
 ### Documentation
