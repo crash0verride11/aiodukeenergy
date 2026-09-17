@@ -41,6 +41,7 @@ _AUTH_TOKEN_URL = _BASE_URL / "login" / "auth-token"
 # Duke Energy API credentials (from mobile app)
 _DE_CLIENT_ID = "HO2JKfv2dVuXhLHhleDr1s6fgVlPduGxVBO6GaS3dDjE7Kp8"
 _DE_CLIENT_SECRET = "g4236o8ROFMD4JuVI4tsgLY7NiIEGXQgzzCnH9RiRrvFC6IN4KFg3A6dBmGIIuW6"  # noqa: S105
+_USER_AGENT = "Duke%20Energy/1374 CFNetwork/3896.100.1.2.1 Darwin/27.0.0"
 
 
 class AbstractDukeEnergyAuth(ABC):
@@ -184,7 +185,7 @@ class AbstractDukeEnergyAuth(ABC):
             "Content-Type": "application/json; charset=utf-8",
             "Accept": "application/json",
             "platform": "iOS",
-            "User-Agent": "Duke%20Energy/1374 CFNetwork/3896.100.1.2.1 Darwin/27.0.0",
+            "User-Agent": _USER_AGENT,
         }
 
         _LOGGER.debug("Exchanging id_token for Duke Energy API token")
@@ -250,9 +251,7 @@ class AbstractDukeEnergyAuth(ABC):
                 "Content-Type": "application/json; charset=utf-8",
                 "Accept": "application/json",
                 "platform": "iOS",
-                "User-Agent": (
-                    "Duke%20Energy/1374 CFNetwork/3896.100.1.2.1 Darwin/27.0.0"
-                ),
+                "User-Agent": _USER_AGENT,
             }
         )
 

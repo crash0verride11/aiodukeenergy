@@ -43,6 +43,7 @@ _USERINFO_URL = _AUTH0_BASE_URL / "userinfo"
 _CLIENT_ID = "PitoKqxMh8thrFF8rRlYGrAs3LbSD2dj"
 # _REDIRECT_URI = "cma-prod://login.duke-energy.com/ios/com.dukeenergy.customerapp.release/callback"
 _REDIRECT_URI = "https://login.duke-energy.com/ios/com.duke-energy.app/callback"
+_USER_AGENT = "Duke%20Energy/1374 CFNetwork/3896.100.1.2.1 Darwin/27.0.0"
 _AUTH0_CLIENT = base64.b64encode(
     json.dumps(
         {
