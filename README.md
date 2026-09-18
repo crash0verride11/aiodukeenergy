@@ -35,11 +35,17 @@
 
 Asyncio Duke Energy
 
+## Crash Override Edition
+
+I wanted a pip available fork that I could more actively maintain and add api calls to without waiting on pull requests. Includes fixes for gas usage, support for MONTHLY usage requests, and billing and payment information api calls.
+
 ## Installation
 
 Install this via pip (or your favourite package manager):
 
 `pip install aiodukeenergy-co`
+
+Import as `aiodukeenergy_co`
 
 ## Usage
 
