@@ -96,7 +96,7 @@ class DukeEnergy:
             return self._accounts
 
         account_list = await self._get_json(
-            _BASE_URL.joinpath("account-list"),
+            _BASE_URL.joinpath("account", "list"),
             {
                 "email": self.email,
                 "internalUserID": self.internal_user_id,
@@ -104,8 +104,19 @@ class DukeEnergy:
             },
         )
 
+        # account/list spells BP as "BP" and may omit the source IDs, so
+        # normalize each account to the fields the other requests rely on.
+        related_bp = account_list.get("relatedBPNumber") or account_list.get(
+            "relatedBpNumber"
+        )
         accounts = {}
         for account in account_list["accounts"]:
+            account["primaryBpNumber"] = account.get("primaryBPNumber") or account.get(
+                "primaryBpNumber"
+            )
+            account["srcSysCd"] = account.get("srcSysCd") or "ISU"
+            account["srcAcctId"] = account.get("srcAcctId") or account["accountNumber"]
+            account["srcAcctId2"] = account.get("srcAcctId2") or ""
             details = await self._get_json(
                 _BASE_URL.joinpath("account-details-v2"),
                 {
@@ -113,7 +124,7 @@ class DukeEnergy:
                     "srcSysCd": account["srcSysCd"],
                     "srcAcctId": account["srcAcctId"],
                     "primaryBpNumber": account["primaryBpNumber"],
-                    "relatedBpNumber": account_list["relatedBpNumber"],
+                    "relatedBpNumber": related_bp,
                 },
             )
             accounts[account["accountNumber"]] = {
@@ -199,7 +210,7 @@ class DukeEnergy:
             {
                 "srcSysCd": meter["account"]["srcSysCd"],
                 "srcAcctId": meter["account"]["srcAcctId"],
-                "srcAcctId2": meter["account"]["srcAcctId2"] or "",
+                "srcAcctId2": meter["account"]["srcAcctId2"],
                 "meterSerialNumber": meter["serialNum"],
                 "serviceType": meter["serviceType"],
                 "intervalFrequency": interval,
