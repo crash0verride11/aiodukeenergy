@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.3.1 (2026-10-29)
+
+### Bug fixes
+
+- Account-list moved to account/list ([`7aabd37`](https://github.com/crash0verride11/aiodukeenergy/commit/7aabd3705783a5c2045d0a38fd23c2d3df90a841))
+
 ## v1.3.0 (2026-09-17)
 
 ### Bug fixes
