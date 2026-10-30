@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.3.2 (2026-10-30)
+
+### Bug fixes
+
+- Monthly usage moved to account/usage/comparison ([`bcf28b0`](https://github.com/crash0verride11/aiodukeenergy/commit/bcf28b0acecf9095db8ce0f78ffb9616724338cf))
+
 ## v1.3.1 (2026-10-29)
 
 ### Bug fixes
