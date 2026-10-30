@@ -388,10 +388,9 @@ class DukeEnergy:
             start_date = end_date
 
         return await self._post_json(
-            _BASE_URL.joinpath("account", "usage", "monthly"),
+            _BASE_URL.joinpath("account", "usage", "comparison"),
             {
-                "srcSysCd": meter["account"]["srcSysCd"],
-                "srcAcctId": meter["account"]["srcAcctId"],
+                "accountNumber": meter["account"]["accountNumber"],
                 "serviceType": meter["serviceType"],
                 "unitOfMeasure": "CCF" if meter["serviceType"] == "GAS" else "KWH",
                 "meterNumber": meter["serialNum"],

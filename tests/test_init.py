@@ -1023,7 +1023,7 @@ class TestUsageAPI:
                     invoice_pattern, payload=mock_invoice_list_response, repeat=True
                 )
                 pattern = re.compile(
-                    r"^https://api-v2\.cma\.duke-energy\.app/account/usage/monthly"
+                    r"^https://api-v2\.cma\.duke-energy\.app/account/usage/comparison"
                 )
                 mocked.post(pattern, payload=mock_monthly_usage_data, repeat=True)
 
@@ -1049,7 +1049,7 @@ class TestUsageAPI:
 
                 # The passed-in startDate is sent; endDate is yesterday.
                 monthly_url = yarl.URL(
-                    "https://api-v2.cma.duke-energy.app/account/usage/monthly"
+                    "https://api-v2.cma.duke-energy.app/account/usage/comparison"
                 )
                 monthly_request = mocked.requests[("POST", monthly_url)][-1]
                 sent = monthly_request.kwargs["json"]
@@ -1057,6 +1057,10 @@ class TestUsageAPI:
                 assert sent["periodType"] == "BILLINGCYCLE"
                 yesterday = datetime.now() - timedelta(days=1)
                 assert sent["endDate"] == yesterday.strftime("%m/%d/%Y")
+                # comparison identifies the account by number, not source IDs
+                assert sent["accountNumber"] == "accountNumber"
+                assert "srcSysCd" not in sent
+                assert "srcAcctId" not in sent
 
     @pytest.mark.asyncio
     async def test_monthly_usage_defaults_to_yesterday(
@@ -1088,7 +1092,7 @@ class TestUsageAPI:
                     mock_account_details_response,
                 )
                 pattern = re.compile(
-                    r"^https://api-v2\.cma\.duke-energy\.app/account/usage/monthly"
+                    r"^https://api-v2\.cma\.duke-energy\.app/account/usage/comparison"
                 )
                 mocked.post(pattern, payload=mock_monthly_usage_data, repeat=True)
 
@@ -1099,7 +1103,7 @@ class TestUsageAPI:
                 await client.get_monthly_usage(serial_number)
 
                 monthly_url = yarl.URL(
-                    "https://api-v2.cma.duke-energy.app/account/usage/monthly"
+                    "https://api-v2.cma.duke-energy.app/account/usage/comparison"
                 )
                 sent = mocked.requests[("POST", monthly_url)][-1].kwargs["json"]
                 yesterday = datetime.now() - timedelta(days=1)
