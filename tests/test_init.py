@@ -7,7 +7,7 @@ from typing import Any
 import aiohttp
 import pytest
 import yarl
-from aioresponses import aioresponses
+from aiointercept import aiointercept
 
 from aiodukeenergy_co import (
     AbstractDukeEnergyAuth,
@@ -490,7 +490,7 @@ class TestCodeExchange:
 
             auth = DukeEnergyAuth(session, auth0_client)
 
-            with aioresponses() as mocked:
+            async with aiointercept(mock_external_urls=True) as mocked:
                 # Mock Auth0 token endpoint
                 mocked.post(
                     "https://login.duke-energy.com/oauth/token",
@@ -552,7 +552,7 @@ class TestTokenRefresh:
                 id_token=expired_id_token,
             )
 
-            with aioresponses() as mocked:
+            async with aiointercept(mock_external_urls=True) as mocked:
                 # Mock token refresh
                 mocked.post(
                     "https://login.duke-energy.com/oauth/token",
@@ -603,7 +603,7 @@ class TestAccountAPI:
                 id_token=test_id_token,
             )
 
-            with aioresponses() as mocked:
+            async with aiointercept(mock_external_urls=True) as mocked:
                 setup_auth_mocks(mocked, mock_duke_token_response)
                 setup_api_mocks(
                     mocked,
@@ -640,7 +640,7 @@ class TestAccountAPI:
                 id_token=test_id_token,
             )
 
-            with aioresponses() as mocked:
+            async with aiointercept(mock_external_urls=True) as mocked:
                 setup_auth_mocks(mocked, mock_duke_token_response)
                 setup_api_mocks(
                     mocked,
@@ -698,7 +698,7 @@ class TestAccountAPI:
                 id_token=test_id_token,
             )
 
-            with aioresponses() as mocked:
+            async with aiointercept(mock_external_urls=True) as mocked:
                 setup_auth_mocks(mocked, mock_duke_token_response)
                 setup_api_mocks(
                     mocked,
@@ -733,7 +733,7 @@ class TestAccountAPI:
                 id_token=test_id_token,
             )
 
-            with aioresponses() as mocked:
+            async with aiointercept(mock_external_urls=True) as mocked:
                 setup_auth_mocks(mocked, mock_duke_token_response)
                 pattern = re.compile(
                     r"^https://api-v2\.cma\.duke-energy\.app/billing-and-payment"
@@ -777,7 +777,7 @@ class TestAccountAPI:
                 id_token=test_id_token,
             )
 
-            with aioresponses() as mocked:
+            async with aiointercept(mock_external_urls=True) as mocked:
                 setup_auth_mocks(mocked, mock_duke_token_response)
                 pattern = re.compile(
                     r"^https://api-v2\.cma\.duke-energy\.app/billing-and-payment"
@@ -820,7 +820,7 @@ class TestUsageAPI:
                 id_token=test_id_token,
             )
 
-            with aioresponses() as mocked:
+            async with aiointercept(mock_external_urls=True) as mocked:
                 setup_auth_mocks(mocked, mock_duke_token_response)
                 setup_api_mocks(
                     mocked,
@@ -875,7 +875,7 @@ class TestUsageAPI:
                 id_token=test_id_token,
             )
 
-            with aioresponses() as mocked:
+            async with aiointercept(mock_external_urls=True) as mocked:
                 setup_auth_mocks(mocked, mock_duke_token_response)
                 setup_api_mocks(
                     mocked,
@@ -931,7 +931,7 @@ class TestUsageAPI:
                 id_token=test_id_token,
             )
 
-            with aioresponses() as mocked:
+            async with aiointercept(mock_external_urls=True) as mocked:
                 setup_auth_mocks(mocked, mock_duke_token_response)
                 setup_api_mocks(
                     mocked,
@@ -972,7 +972,7 @@ class TestUsageAPI:
                 id_token=test_id_token,
             )
 
-            with aioresponses() as mocked:
+            async with aiointercept(mock_external_urls=True) as mocked:
                 setup_auth_mocks(mocked, mock_duke_token_response)
                 setup_api_mocks(
                     mocked,
@@ -1009,7 +1009,7 @@ class TestUsageAPI:
                 id_token=test_id_token,
             )
 
-            with aioresponses() as mocked:
+            async with aiointercept(mock_external_urls=True) as mocked:
                 setup_auth_mocks(mocked, mock_duke_token_response)
                 setup_api_mocks(
                     mocked,
@@ -1084,7 +1084,7 @@ class TestUsageAPI:
                 id_token=test_id_token,
             )
 
-            with aioresponses() as mocked:
+            async with aiointercept(mock_external_urls=True) as mocked:
                 setup_auth_mocks(mocked, mock_duke_token_response)
                 setup_api_mocks(
                     mocked,
@@ -1132,7 +1132,7 @@ class TestUsageAPI:
                 id_token=test_id_token,
             )
 
-            with aioresponses() as mocked:
+            async with aiointercept(mock_external_urls=True) as mocked:
                 setup_auth_mocks(mocked, mock_duke_token_response)
                 setup_api_mocks(
                     mocked,
@@ -1212,7 +1212,7 @@ class TestUsageAPI:
                 id_token=test_id_token,
             )
 
-            with aioresponses() as mocked:
+            async with aiointercept(mock_external_urls=True) as mocked:
                 setup_auth_mocks(mocked, mock_duke_token_response)
                 setup_api_mocks(
                     mocked,
@@ -1296,7 +1296,7 @@ class TestErrorHandling:
             auth0_client = Auth0Client(session)
             auth = DukeEnergyAuth(session, auth0_client)
 
-            with aioresponses() as mocked:
+            async with aiointercept(mock_external_urls=True) as mocked:
                 # Mock Auth0 token endpoint with error
                 mocked.post(
                     "https://login.duke-energy.com/oauth/token",
@@ -1316,7 +1316,7 @@ class TestErrorHandling:
             auth0_client = Auth0Client(session)
             auth = DukeEnergyAuth(session, auth0_client)
 
-            with aioresponses() as mocked:
+            async with aiointercept(mock_external_urls=True) as mocked:
                 # Mock Auth0 token endpoint success
                 mocked.post(
                     "https://login.duke-energy.com/oauth/token",
@@ -1347,13 +1347,13 @@ class TestErrorHandling:
             auth0_client = Auth0Client(session)
             auth = DukeEnergyAuth(session, auth0_client)
 
-            with aioresponses() as mocked:
+            async with aiointercept(mock_external_urls=True) as mocked:
                 mocked.post(
                     "https://login.duke-energy.com/oauth/token",
                     payload=mock_auth0_token_response,
                 )
                 # Akamai "Access Denied" page: HTML, never reached the origin.
-                # content_type must be explicit; aioresponses defaults to JSON.
+                # content_type must be explicit; aiointercept defaults to JSON.
                 mocked.post(
                     "https://api-v2.cma.duke-energy.app/login/auth-token",
                     status=403,
@@ -1381,7 +1381,7 @@ class TestErrorHandling:
             auth0_client = Auth0Client(session)
             auth = DukeEnergyAuth(session, auth0_client)
 
-            with aioresponses() as mocked:
+            async with aiointercept(mock_external_urls=True) as mocked:
                 mocked.post(
                     "https://login.duke-energy.com/oauth/token",
                     payload=mock_auth0_token_response,
@@ -1420,7 +1420,7 @@ class TestErrorHandling:
                 refresh_token="refresh_token",  # noqa: S106
             )
 
-            with aioresponses() as mocked:
+            async with aiointercept(mock_external_urls=True) as mocked:
                 # Mock Auth0 refresh endpoint with error
                 mocked.post(
                     "https://login.duke-energy.com/oauth/token",
@@ -1452,7 +1452,7 @@ class TestErrorHandling:
                 id_token=test_id_token,
             )
 
-            with aioresponses() as mocked:
+            async with aiointercept(mock_external_urls=True) as mocked:
                 setup_auth_mocks(mocked, mock_duke_token_response)
                 setup_api_mocks(
                     mocked,
@@ -1490,7 +1490,7 @@ class TestErrorHandling:
                 id_token=test_id_token,
             )
 
-            with aioresponses() as mocked:
+            async with aiointercept(mock_external_urls=True) as mocked:
                 setup_auth_mocks(mocked, mock_duke_token_response)
                 pattern = re.compile(
                     r"^https://api-v2\.cma\.duke-energy\.app/account/list"
@@ -1522,7 +1522,7 @@ class TestErrorHandling:
                 id_token=test_id_token,
             )
 
-            with aioresponses() as mocked:
+            async with aiointercept(mock_external_urls=True) as mocked:
                 setup_auth_mocks(mocked, mock_duke_token_response)
                 setup_api_mocks(
                     mocked,
@@ -1637,7 +1637,7 @@ class TestAuth0Client:
         async with aiohttp.ClientSession() as session:
             auth0 = Auth0Client(session)
 
-            with aioresponses() as mocked:
+            async with aiointercept(mock_external_urls=True) as mocked:
                 mocked.get(
                     "https://login.duke-energy.com/userinfo",
                     payload={"email": "test@example.com", "sub": "user123"},
@@ -1734,7 +1734,7 @@ class TestDukeEnergyAuthTokenManagement:
 
             server_issued_at = 1700000000  # Fixed timestamp
 
-            with aioresponses() as mocked:
+            async with aiointercept(mock_external_urls=True) as mocked:
                 # Mock Auth0 token endpoint
                 mocked.post(
                     "https://login.duke-energy.com/oauth/token",
