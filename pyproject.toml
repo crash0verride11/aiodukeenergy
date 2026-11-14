@@ -23,7 +23,7 @@ packages = [
 "Changelog" = "https://github.com/crash0verride11/aiodukeenergy/blob/aiodukeenergy-co/CHANGELOG.md"
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = "^3.11"
 aiohttp = ">=3.9.0"
 yarl = ">=1.9.0"
 PyJWT = ">=2.0.0"
@@ -32,7 +32,7 @@ PyJWT = ">=2.0.0"
 pytest = "^8.0.0"
 pytest-cov = "^5.0.0"
 pytest-asyncio = "^0.23.6"
-aioresponses = "^0.7.6"
+aiointercept = "^1.0.0"
 
 [tool.poetry.group.docs]
 optional = true
