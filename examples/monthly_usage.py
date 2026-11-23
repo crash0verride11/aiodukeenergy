@@ -115,7 +115,7 @@ async def main() -> None:
 
             # For BILLINGCYCLE, derive each account's cycle start once (latest
             # invoice billEndDate + 1 day) and reuse it across that account's
-            # meters instead of fetching invoice-list per meter.
+            # meters instead of fetching the invoice list per meter.
             start_dates: dict[str, datetime | None] = {}
 
             for serial, meter in meters.items():

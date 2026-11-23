@@ -330,8 +330,8 @@ def setup_api_mocks(mocked, account_list, account_details, usage_data=None):
     mocked.get(pattern, payload=account_list, repeat=True)
 
     # Mock account details
-    pattern = re.compile(r"^https://api-v2\.cma\.duke-energy\.app/account-details-v2")
-    mocked.get(pattern, payload=account_details, repeat=True)
+    pattern = re.compile(r"^https://api-v2\.cma\.duke-energy\.app/account/details")
+    mocked.post(pattern, payload=account_details, repeat=True)
 
     # Mock usage graph
     if usage_data is not None:
@@ -658,15 +658,12 @@ class TestAccountAPI:
                     datetime(2024, 1, 1),
                 )
 
-                details_query = next(
-                    url.query
-                    for (method, url) in mocked.requests
-                    if url.path == "/account-details-v2"
+                details_body = next(
+                    calls[0].kwargs["json"]
+                    for (method, url), calls in mocked.requests.items()
+                    if url.path == "/account/details"
                 )
-                assert details_query["srcSysCd"] == "ISU"
-                assert details_query["srcAcctId"] == "accountNumber"
-                assert details_query["primaryBpNumber"] == "primaryBPNumber"
-                assert details_query["relatedBpNumber"] == "relatedBPNumber"
+                assert details_body == {"accountNumber": "accountNumber"}
 
                 usage_body = next(
                     calls[0].kwargs["json"]
@@ -938,10 +935,13 @@ class TestUsageAPI:
                     mock_account_list_response,
                     mock_account_details_response,
                 )
-                pattern = re.compile(
-                    r"^https://api-v2\.cma\.duke-energy\.app/invoice-list"
+                invoice_url = yarl.URL(
+                    "https://api-v2.cma.duke-energy.app"
+                    "/billing-and-payment/invoice/list"
                 )
-                mocked.get(pattern, payload=mock_invoice_list_response, repeat=True)
+                mocked.post(
+                    invoice_url, payload=mock_invoice_list_response, repeat=True
+                )
 
                 client = DukeEnergy(auth)
                 await client.get_accounts()
@@ -950,6 +950,47 @@ class TestUsageAPI:
 
                 assert len(invoices) == 2
                 assert invoices[0]["billEndDate"] == "2024-06-26"
+
+                sent = mocked.requests[("POST", invoice_url)][-1].kwargs["json"]
+                assert sent == {"accountNumber": "accountNumber"}
+
+    @pytest.mark.asyncio
+    async def test_get_invoices_null(
+        self,
+        mock_duke_token_response,
+        mock_account_list_response,
+        mock_account_details_response,
+    ):
+        """Test that a null invoice list is returned as an empty list."""
+        test_token = _create_test_jwt(exp_offset_seconds=3600)
+        test_id_token = _create_test_jwt(exp_offset_seconds=3600)
+
+        async with aiohttp.ClientSession() as session:
+            auth0_client = Auth0Client(session)
+            auth = DukeEnergyAuth(
+                session,
+                auth0_client,
+                access_token=test_token,
+                refresh_token="refresh",  # noqa: S106
+                id_token=test_id_token,
+            )
+
+            async with aiointercept(mock_external_urls=True) as mocked:
+                setup_auth_mocks(mocked, mock_duke_token_response)
+                setup_api_mocks(
+                    mocked,
+                    mock_account_list_response,
+                    mock_account_details_response,
+                )
+                mocked.post(
+                    "https://api-v2.cma.duke-energy.app"
+                    "/billing-and-payment/invoice/list",
+                    payload={"invoices": None},
+                )
+
+                client = DukeEnergy(auth)
+
+                assert await client.get_invoices("accountNumber") == []
 
     @pytest.mark.asyncio
     async def test_get_invoices_invalid_account(
@@ -1017,9 +1058,10 @@ class TestUsageAPI:
                     mock_account_details_response,
                 )
                 invoice_pattern = re.compile(
-                    r"^https://api-v2\.cma\.duke-energy\.app/invoice-list"
+                    r"^https://api-v2\.cma\.duke-energy\.app"
+                    r"/billing-and-payment/invoice/list"
                 )
-                mocked.get(
+                mocked.post(
                     invoice_pattern, payload=mock_invoice_list_response, repeat=True
                 )
                 pattern = re.compile(

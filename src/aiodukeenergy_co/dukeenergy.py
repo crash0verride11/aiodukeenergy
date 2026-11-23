@@ -105,10 +105,7 @@ class DukeEnergy:
         )
 
         # account/list spells BP as "BP" and may omit the source IDs, so
-        # normalize each account to the fields the other requests rely on.
-        related_bp = account_list.get("relatedBPNumber") or account_list.get(
-            "relatedBpNumber"
-        )
+        # normalize each account to the fields usage requests and callers use.
         accounts = {}
         for account in account_list["accounts"]:
             account["primaryBpNumber"] = account.get("primaryBPNumber") or account.get(
@@ -117,15 +114,9 @@ class DukeEnergy:
             account["srcSysCd"] = account.get("srcSysCd") or "ISU"
             account["srcAcctId"] = account.get("srcAcctId") or account["accountNumber"]
             account["srcAcctId2"] = account.get("srcAcctId2") or ""
-            details = await self._get_json(
-                _BASE_URL.joinpath("account-details-v2"),
-                {
-                    "email": self.email,
-                    "srcSysCd": account["srcSysCd"],
-                    "srcAcctId": account["srcAcctId"],
-                    "primaryBpNumber": account["primaryBpNumber"],
-                    "relatedBpNumber": related_bp,
-                },
+            details = await self._post_json(
+                _BASE_URL.joinpath("account", "details"),
+                {"accountNumber": account["accountNumber"]},
             )
             accounts[account["accountNumber"]] = {
                 **account,
@@ -321,14 +312,11 @@ class DukeEnergy:
         if account is None:
             raise ValueError(f"Account {account_number} not found")
 
-        result = await self._get_json(
-            _BASE_URL.joinpath("invoice-list"),
-            {
-                "srcSysCd": account["srcSysCd"],
-                "srcAcctId": account["srcAcctId"],
-            },
+        result = await self._post_json(
+            _BASE_URL.joinpath("billing-and-payment", "invoice", "list"),
+            {"accountNumber": account["accountNumber"]},
         )
-        return result["invoices"]
+        return result["invoices"] or []
 
     async def get_billing_payment_info(
         self, include_closed: bool = True
