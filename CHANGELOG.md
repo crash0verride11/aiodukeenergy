@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.3.3 (2026-11-23)
+
+### Bug fixes
+
+- Account details and invoice list endpoints moved ([`3fef486`](https://github.com/crash0verride11/aiodukeenergy/commit/3fef4862390c0147c6a1754e475349bf662a25d6))
+
+### Build system
+
+- Drop python 3.10, replace aioresponses with aiointercept ([`25dd7d7`](https://github.com/crash0verride11/aiodukeenergy/commit/25dd7d7808e09d53e510c6f5ffbb594aedf3f139))
+
 ## v1.3.2 (2026-10-30)
 
 ### Bug fixes
