@@ -1398,6 +1398,66 @@ class TestUsageAPI:
         assert start + timedelta(days=days, hours=-1) in result["data"]
 
     @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("omit", "num_rows"),
+        [
+            pytest.param({(0, 4)}, None, id="missing-before"),
+            pytest.param({(3, 4)}, None, id="missing-after"),
+            pytest.param({(0, 4), (3, 4), (3, 5)}, None, id="missing-around"),
+            # Rows stop after day 2, which holds 24 rows plus the duplicate.
+            pytest.param(set(), 49, id="missing-tail"),
+        ],
+    )
+    async def test_hourly_usage_duplicate_and_missing_hours(
+        self,
+        mock_duke_token_response,
+        mock_account_list_response,
+        mock_account_details_response,
+        omit,
+        num_rows,
+    ):
+        """Every hour is reported when a duplicate and gaps share a window."""
+        # Fall DST on the second day of the window.
+        start = datetime(2024, 11, 2)
+        days = 5
+        rows = _make_hourly_rows(days, omit=omit, duplicate={(1, 1)})[:num_rows]
+        end_hour = 48 if num_rows else days * 24
+
+        async with aiohttp.ClientSession() as session:
+            async with aiointercept(mock_external_urls=True) as mocked:
+                setup_auth_mocks(mocked, mock_duke_token_response)
+                setup_api_mocks(
+                    mocked,
+                    mock_account_list_response,
+                    mock_account_details_response,
+                    rows,
+                )
+
+                client = DukeEnergy(MockAuth(session))
+                meters = await client.get_meters()
+                result = await client.get_energy_usage(
+                    next(iter(meters)),
+                    "HOURLY",
+                    "DAY",
+                    start,
+                    start + timedelta(days=days - 1),
+                )
+
+        present = [hour for hour in range(end_hour) if divmod(hour, 24) not in omit]
+        assert result["data"] == {
+            start + timedelta(hours=hour): {
+                "energy": float(hour + 1),
+                "temperature": _day_temperature(hour // 24),
+            }
+            for hour in present
+        }
+        assert result["missing"] == [
+            start + timedelta(hours=hour)
+            for hour in range(days * 24)
+            if hour not in present
+        ]
+
+    @pytest.mark.asyncio
     async def test_hourly_usage_short_response(
         self,
         mock_duke_token_response,

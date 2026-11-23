@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timedelta
+from itertools import count
 from typing import TYPE_CHECKING, Any, Literal
 
 import yarl
@@ -248,17 +249,19 @@ class DukeEnergy:
         if interval == "HOURLY":
             num_expected_values = num_expected_values * 24
 
-        num_values = max(usage_len, num_expected_values)
-
         data = {}
         missing = []
         offset = 0
         duplicates = 0
-        for i in range(num_values):
+        for i in count():
+            # A duplicate hour uses up a pass without advancing the date, so
+            # going by passes alone would stop short of the last expected hour.
+            step = i - duplicates if interval == "HOURLY" else i
+            if i >= usage_len and step >= num_expected_values:
+                break
+
             delta = (
-                timedelta(hours=i - duplicates)
-                if interval == "HOURLY"
-                else timedelta(days=i)
+                timedelta(hours=step) if interval == "HOURLY" else timedelta(days=step)
             )
             date = start_date + delta
             n = i - offset
