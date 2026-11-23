@@ -231,11 +231,13 @@ class DukeEnergy:
         usage_len = len(usage_array)
         num_expected_values = (end_date - start_date).days + 1
 
-        # Extract temperature data. The API can return fewer rows than the
-        # requested window covers (e.g. a window reaching past the meter's
-        # data horizon), so never index beyond what actually came back —
-        # temp is keyed by row index, so existing rows keep their alignment
-        # and absent tail rows fall back to None via the temp_len guard.
+        # Extract temperature data. HOURLY responses carry one daily average
+        # per day of the window in the first rows, unrelated to the hours
+        # those rows describe. DAILY rows each carry their own day's value.
+        # The API can return fewer rows than the requested window covers
+        # (e.g. a window reaching past the meter's data horizon), so never
+        # index beyond what actually came back; days without a value fall
+        # back to None via the temp_len guard.
         temp = [
             usage_array[i]["temperatureAvg"]
             for i in range(min(num_expected_values, usage_len))
@@ -245,8 +247,6 @@ class DukeEnergy:
         # If interval is hourly, multiply the number of values by 24
         if interval == "HOURLY":
             num_expected_values = num_expected_values * 24
-            temp = [t for t in temp for _ in range(24)]
-            temp_len = len(temp)
 
         num_values = max(usage_len, num_expected_values)
 
@@ -290,9 +290,12 @@ class DukeEnergy:
                 missing.append(date)
                 continue
 
+            # HOURLY rows can be missing or repeated (e.g. DST changes), so
+            # the row position does not give the day; the date does.
+            t = (date.date() - start_date.date()).days if interval == "HOURLY" else n
             data[date] = {
                 "energy": float(usage_array[n]["usage"]),
-                "temperature": temp[n] if n < temp_len else None,
+                "temperature": temp[t] if t < temp_len else None,
             }
 
         return {"data": data, "missing": missing}

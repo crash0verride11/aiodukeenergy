@@ -323,6 +323,35 @@ def mock_duplicate_hours_data():
     return hourly_data
 
 
+def _make_hourly_rows(days, omit=(), duplicate=(), zero=()):
+    """
+    Create hourly rows with a distinct temperature per day.
+
+    As Duke does, the daily averages sit in the first rows of the response (one
+    per day, whatever hour the row describes) and are None after that. The
+    omit, duplicate, and zero arguments hold (day, hour) pairs.
+    """
+    rows = []
+    for day in range(days):
+        for hour in range(24):
+            if (day, hour) in omit:
+                continue
+            row = {
+                "date": datetime(2024, 1, 1, hour).strftime("%I %p"),
+                "usage": "0" if (day, hour) in zero else str(day * 24 + hour + 1),
+            }
+            rows.extend(dict(row) for _ in range(1 + ((day, hour) in duplicate)))
+
+    for idx, row in enumerate(rows):
+        row["temperatureAvg"] = _day_temperature(idx) if idx < days else None
+    return rows
+
+
+def _day_temperature(day):
+    """Return the distinct synthetic temperature used for a day of the window."""
+    return f"{50 + day}.25"
+
+
 def setup_api_mocks(mocked, account_list, account_details, usage_data=None):
     """Set up the mocked responses for Duke Energy API."""
     # Mock account list
@@ -1291,6 +1320,215 @@ class TestUsageAPI:
                 day2 = start + timedelta(days=1)
                 assert result["data"][day2]["energy"] == 10.0
                 assert result["data"][day2]["temperature"] == 30
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("start", "row_kwargs", "expected_hours"),
+        [
+            pytest.param(
+                # Spring DST on the second day of the window.
+                datetime(2024, 3, 9),
+                {"omit": {(1, 2)}},
+                [24, 23, 24, 24, 24],
+                id="spring-dst",
+            ),
+            pytest.param(
+                datetime(2024, 1, 1, tzinfo=timezone(timedelta(hours=-5))),
+                {"omit": {(1, hour) for hour in range(5, 13)}},
+                [24, 16, 24, 24, 24],
+                id="missing-consecutive-hours",
+            ),
+            pytest.param(
+                # Fall DST on the second day of the window.
+                datetime(2024, 11, 2),
+                {"duplicate": {(1, 1)}},
+                [24, 24, 24, 24, 24],
+                id="fall-dst",
+            ),
+            pytest.param(
+                datetime(2024, 1, 1),
+                {"zero": {(1, hour) for hour in range(5, 13)}},
+                [24, 16, 24, 24, 24],
+                id="zero-usage-hours",
+            ),
+        ],
+    )
+    async def test_hourly_temperature_matches_day(
+        self,
+        mock_duke_token_response,
+        mock_account_list_response,
+        mock_account_details_response,
+        start,
+        row_kwargs,
+        expected_hours,
+    ):
+        """Every hour of a day has that day's temperature despite row shifts."""
+        days = len(expected_hours)
+
+        async with aiohttp.ClientSession() as session:
+            async with aiointercept(mock_external_urls=True) as mocked:
+                setup_auth_mocks(mocked, mock_duke_token_response)
+                setup_api_mocks(
+                    mocked,
+                    mock_account_list_response,
+                    mock_account_details_response,
+                    _make_hourly_rows(days, **row_kwargs),
+                )
+
+                client = DukeEnergy(MockAuth(session))
+                meters = await client.get_meters()
+                result = await client.get_energy_usage(
+                    next(iter(meters)),
+                    "HOURLY",
+                    "DAY",
+                    start,
+                    start + timedelta(days=days - 1),
+                )
+
+        temperatures = {}
+        for date, reading in result["data"].items():
+            day = (date.date() - start.date()).days
+            temperatures.setdefault(day, []).append(reading["temperature"])
+
+        assert temperatures == {
+            day: [_day_temperature(day)] * hours
+            for day, hours in enumerate(expected_hours)
+        }
+        # The window's final hour is present, and so part of the check above.
+        assert start + timedelta(days=days, hours=-1) in result["data"]
+
+    @pytest.mark.asyncio
+    async def test_hourly_usage_short_response(
+        self,
+        mock_duke_token_response,
+        mock_account_list_response,
+        mock_account_details_response,
+    ):
+        """
+        An hourly response shorter than the window must not raise.
+
+        Covers fewer rows than the window has days, so not even every day's
+        temperature came back; the uncovered tail is reported as missing.
+        """
+        start = datetime(2024, 1, 1)
+
+        async with aiohttp.ClientSession() as session:
+            async with aiointercept(mock_external_urls=True) as mocked:
+                setup_auth_mocks(mocked, mock_duke_token_response)
+                setup_api_mocks(
+                    mocked,
+                    mock_account_list_response,
+                    mock_account_details_response,
+                    _make_hourly_rows(5)[:3],
+                )
+
+                client = DukeEnergy(MockAuth(session))
+                meters = await client.get_meters()
+                result = await client.get_energy_usage(
+                    next(iter(meters)),
+                    "HOURLY",
+                    "DAY",
+                    start,
+                    start + timedelta(days=4),
+                )
+
+        hours = [start + timedelta(hours=hour) for hour in range(5 * 24)]
+        assert result["data"] == {
+            date: {"energy": float(idx + 1), "temperature": _day_temperature(0)}
+            for idx, date in enumerate(hours[:3])
+        }
+        assert result["missing"] == hours[3:]
+
+    @pytest.mark.asyncio
+    async def test_hourly_usage_long_response(
+        self,
+        mock_duke_token_response,
+        mock_account_list_response,
+        mock_account_details_response,
+    ):
+        """
+        An hourly response longer than the window must not raise.
+
+        Days past the window keep their usage but have no temperature, even
+        when the rows after the window's daily averages carry a value.
+        """
+        start = datetime(2024, 1, 1)
+
+        async with aiohttp.ClientSession() as session:
+            async with aiointercept(mock_external_urls=True) as mocked:
+                setup_auth_mocks(mocked, mock_duke_token_response)
+                setup_api_mocks(
+                    mocked,
+                    mock_account_list_response,
+                    mock_account_details_response,
+                    _make_hourly_rows(7),
+                )
+
+                client = DukeEnergy(MockAuth(session))
+                meters = await client.get_meters()
+                result = await client.get_energy_usage(
+                    next(iter(meters)),
+                    "HOURLY",
+                    "DAY",
+                    start,
+                    start + timedelta(days=4),
+                )
+
+        assert result["missing"] == []
+        assert result["data"] == {
+            start + timedelta(days=day, hours=hour): {
+                "energy": float(day * 24 + hour + 1),
+                "temperature": _day_temperature(day) if day < 5 else None,
+            }
+            for day in range(7)
+            for hour in range(24)
+        }
+
+    @pytest.mark.asyncio
+    async def test_daily_temperature_missing_day(
+        self,
+        mock_duke_token_response,
+        mock_account_list_response,
+        mock_account_details_response,
+    ):
+        """DAILY rows keep their own temperature when a day is missing."""
+        start = datetime(2024, 1, 1)
+        rows = [
+            {
+                "date": f"1/{day + 1:02}/2024",
+                "usage": str(day + 1),
+                "temperatureAvg": _day_temperature(day),
+            }
+            for day in range(5)
+            if day != 2
+        ]
+
+        async with aiohttp.ClientSession() as session:
+            async with aiointercept(mock_external_urls=True) as mocked:
+                setup_auth_mocks(mocked, mock_duke_token_response)
+                setup_api_mocks(
+                    mocked,
+                    mock_account_list_response,
+                    mock_account_details_response,
+                    rows,
+                )
+
+                client = DukeEnergy(MockAuth(session))
+                meters = await client.get_meters()
+                result = await client.get_energy_usage(
+                    next(iter(meters)),
+                    "DAILY",
+                    "WEEK",
+                    start,
+                    start + timedelta(days=4),
+                )
+
+        assert result["missing"] == [start + timedelta(days=2)]
+        assert {
+            date: reading["temperature"] for date, reading in result["data"].items()
+        } == {
+            start + timedelta(days=day): _day_temperature(day) for day in (0, 1, 3, 4)
+        }
 
 
 class TestErrorHandling:
