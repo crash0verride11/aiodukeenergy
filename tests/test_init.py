@@ -331,7 +331,7 @@ def _make_hourly_rows(days, omit=(), duplicate=(), zero=()):
     per day, whatever hour the row describes) and are None after that. The
     omit, duplicate, and zero arguments hold (day, hour) pairs.
     """
-    rows = []
+    rows: list[dict[str, Any]] = []
     for day in range(days):
         for hour in range(24):
             if (day, hour) in omit:
@@ -1385,7 +1385,7 @@ class TestUsageAPI:
                     start + timedelta(days=days - 1),
                 )
 
-        temperatures = {}
+        temperatures: dict[int, list[str | None]] = {}
         for date, reading in result["data"].items():
             day = (date.date() - start.date()).days
             temperatures.setdefault(day, []).append(reading["temperature"])
