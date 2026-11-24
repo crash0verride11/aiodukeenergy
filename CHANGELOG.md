@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.3.4 (2026-11-24)
+
+### Testing
+
+- Annotate hourly usage test variables for mypy ([`b162dfa`](https://github.com/crash0verride11/aiodukeenergy/commit/b162dfae09822917a082c9c83fbb91788384dd90))
+
+### Bug fixes
+
+- Last hour lost when a duplicate and a missing hour share a window ([`7550813`](https://github.com/crash0verride11/aiodukeenergy/commit/75508134de88cd64d95de63d22de8714dca4b432))
+- Hourly temperatures landed on the wrong day ([`68e73bd`](https://github.com/crash0verride11/aiodukeenergy/commit/68e73bdd5da8c315101a86d3a98093ec3028e066))
+
 ## v1.3.3 (2026-11-23)
 
 ### Bug fixes

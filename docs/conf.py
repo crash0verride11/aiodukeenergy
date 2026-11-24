@@ -7,7 +7,7 @@
 project = "aiodukeenergy-co"
 copyright = "2024, Jason Hunter"
 author = "crash0verride11"
-release = "1.3.3"
+release = "1.3.4"
 
 # General configuration
 extensions = [
