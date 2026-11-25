@@ -22,12 +22,16 @@ Example usage:
 
 from __future__ import annotations
 
+import base64
+import binascii
 import logging
 from datetime import datetime, timedelta
 from itertools import count
 from typing import TYPE_CHECKING, Any, Literal
 
 import yarl
+
+from .exceptions import DukeEnergyError
 
 if TYPE_CHECKING:
     from .duke_auth import AbstractDukeEnergyAuth
@@ -324,6 +328,37 @@ class DukeEnergy:
         )
         return result["invoices"] or []
 
+    async def get_invoice_pdf(self, invoice_id: str) -> bytes | None:
+        """
+        Get an invoice's bill as a PDF.
+
+        The response is close to 1 MB, far larger than any other call, and an
+        issued bill does not change. Fetch it once per invoice rather than on
+        every poll.
+
+        :param invoice_id: The ``invId`` of an invoice from :meth:`get_invoices`.
+        :returns: The PDF file's bytes, or None if Duke has no PDF for it.
+        :raises DukeEnergyError: If the returned data is not a PDF.
+        """
+        result = await self._post_json(
+            _BASE_URL.joinpath("billing-and-payment", "invoice", "image"),
+            {"invoiceId": invoice_id},
+            log_response=False,
+        )
+        image_data = result.get("imageData")
+        if not image_data:
+            return None
+
+        try:
+            pdf = base64.b64decode(image_data)
+        except (binascii.Error, ValueError) as err:
+            raise DukeEnergyError("Invoice image is not valid base64") from err
+
+        if not pdf.startswith(b"%PDF-"):
+            raise DukeEnergyError("Invoice image is not a PDF")
+
+        return pdf
+
     async def get_billing_payment_info(
         self, include_closed: bool = True
     ) -> dict[str, dict[str, Any]]:
@@ -419,13 +454,19 @@ class DukeEnergy:
         return json_data
 
     async def _post_json(
-        self, url: yarl.URL, body: dict[str, Any] | None = None
+        self,
+        url: yarl.URL,
+        body: dict[str, Any] | None = None,
+        *,
+        log_response: bool = True,
     ) -> dict[str, Any]:
         """
         Post JSON to the Duke Energy API and return JSON response.
 
         :param url: URL to request.
         :param body: JSON body.
+        :param log_response: Whether to include the JSON in debug logs. Turn off
+            for large responses.
         :returns: JSON response as dictionary.
         """
         _LOGGER.debug("Posting to %s with body: %s", url, body)
@@ -437,5 +478,6 @@ class DukeEnergy:
             _LOGGER.debug("Error response body from %s: %s", url, error_body)
         response.raise_for_status()
         json_data = await response.json()
-        _LOGGER.debug("JSON from %s: %s", url, json_data)
+        if log_response:
+            _LOGGER.debug("JSON from %s: %s", url, json_data)
         return json_data

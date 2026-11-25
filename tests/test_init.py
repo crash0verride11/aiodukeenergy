@@ -1,5 +1,7 @@
 """Tests for aiodukeenergy_co library."""
 
+import base64
+import logging
 import re
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -14,6 +16,7 @@ from aiodukeenergy_co import (
     Auth0Client,
     DukeEnergy,
     DukeEnergyAuth,
+    DukeEnergyError,
 )
 
 
@@ -1020,6 +1023,92 @@ class TestUsageAPI:
                 client = DukeEnergy(auth)
 
                 assert await client.get_invoices("accountNumber") == []
+
+    @pytest.mark.asyncio
+    async def test_get_invoice_pdf(self, mock_duke_token_response, caplog):
+        """Test getting an invoice's PDF, without logging its contents."""
+        pdf = b"%PDF-1.4\nbill\n%%EOF"
+        image_data = base64.b64encode(pdf).decode()
+
+        async with aiohttp.ClientSession() as session:
+            auth = DukeEnergyAuth(
+                session,
+                Auth0Client(session),
+                access_token=_create_test_jwt(exp_offset_seconds=3600),
+                refresh_token="refresh",  # noqa: S106
+                id_token=_create_test_jwt(exp_offset_seconds=3600),
+            )
+
+            async with aiointercept(mock_external_urls=True) as mocked:
+                setup_auth_mocks(mocked, mock_duke_token_response)
+                url = yarl.URL(
+                    "https://api-v2.cma.duke-energy.app"
+                    "/billing-and-payment/invoice/image"
+                )
+                mocked.post(url, payload={"imageData": image_data})
+
+                client = DukeEnergy(auth)
+                with caplog.at_level(logging.DEBUG):
+                    assert await client.get_invoice_pdf("200000000002") == pdf
+
+                sent = mocked.requests[("POST", url)][-1].kwargs["json"]
+                assert sent == {"invoiceId": "200000000002"}
+
+        assert image_data not in caplog.text
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("payload", [{}, {"imageData": None}, {"imageData": ""}])
+    async def test_get_invoice_pdf_none(self, mock_duke_token_response, payload):
+        """Test that an invoice without a PDF returns None."""
+        async with aiohttp.ClientSession() as session:
+            auth = DukeEnergyAuth(
+                session,
+                Auth0Client(session),
+                access_token=_create_test_jwt(exp_offset_seconds=3600),
+                refresh_token="refresh",  # noqa: S106
+                id_token=_create_test_jwt(exp_offset_seconds=3600),
+            )
+
+            async with aiointercept(mock_external_urls=True) as mocked:
+                setup_auth_mocks(mocked, mock_duke_token_response)
+                mocked.post(
+                    "https://api-v2.cma.duke-energy.app"
+                    "/billing-and-payment/invoice/image",
+                    payload=payload,
+                )
+
+                client = DukeEnergy(auth)
+                assert await client.get_invoice_pdf("200000000002") is None
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "image_data",
+        ["abc", "not ascii \u00e9", base64.b64encode(b"GIF89a").decode()],
+    )
+    async def test_get_invoice_pdf_not_a_pdf(
+        self, mock_duke_token_response, image_data
+    ):
+        """Test that data that is not a PDF raises DukeEnergyError."""
+        async with aiohttp.ClientSession() as session:
+            auth = DukeEnergyAuth(
+                session,
+                Auth0Client(session),
+                access_token=_create_test_jwt(exp_offset_seconds=3600),
+                refresh_token="refresh",  # noqa: S106
+                id_token=_create_test_jwt(exp_offset_seconds=3600),
+            )
+
+            async with aiointercept(mock_external_urls=True) as mocked:
+                setup_auth_mocks(mocked, mock_duke_token_response)
+                mocked.post(
+                    "https://api-v2.cma.duke-energy.app"
+                    "/billing-and-payment/invoice/image",
+                    payload={"imageData": image_data},
+                )
+
+                client = DukeEnergy(auth)
+                with pytest.raises(DukeEnergyError):
+                    await client.get_invoice_pdf("200000000002")
 
     @pytest.mark.asyncio
     async def test_get_invoices_invalid_account(
