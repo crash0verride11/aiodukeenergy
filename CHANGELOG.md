@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.4.0 (2026-11-25)
+
+### Documentation
+
+- Match example's _post_json override to the library ([`c04dd29`](https://github.com/crash0verride11/aiodukeenergy/commit/c04dd2969484f968a52ef455a095d241fbe3e809))
+- Add example checking how duke answers windows before first data ([`6e31239`](https://github.com/crash0verride11/aiodukeenergy/commit/6e31239d905257834acfd021d287b73abb12a7c4))
+
+### Features
+
+- Add get_invoice_pdf ([`618b587`](https://github.com/crash0verride11/aiodukeenergy/commit/618b587248cef4c94f7868e8fde6b64711a7bfc4))
+
 ## v1.3.4 (2026-11-24)
 
 ### Testing
