@@ -131,11 +131,15 @@ class RecordingDukeEnergy(DukeEnergy):
     body = ""
 
     async def _post_json(
-        self, url: yarl.URL, body: dict[str, Any] | None = None
+        self,
+        url: yarl.URL,
+        body: dict[str, Any] | None = None,
+        *,
+        log_response: bool = True,
     ) -> dict[str, Any]:
         """Post JSON, keeping the status and body of usage requests."""
         if not url.path.endswith("/usage/graph"):
-            return await super()._post_json(url, body)
+            return await super()._post_json(url, body, log_response=log_response)
 
         response = await self._auth.request("POST", url, json=body or {})
         self.status = response.status
