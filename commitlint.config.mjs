@@ -8,6 +8,9 @@ export default {
       /^(\w+(\([^)]*\))?!?:\s+)?Merge (branch|pull request|remote-tracking branch|tag|commit) /.test(
         message,
       ),
+    // Also merge commits titled with "merge" as the type, e.g.
+    // "merge(feat): pull request #9 from ...".
+    (message) => /^merge(\([^)]*\))?!?:\s/i.test(message),
   ],
   rules: {
     "header-max-length": [0, "always", Infinity],
