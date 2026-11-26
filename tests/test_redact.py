@@ -118,6 +118,8 @@ class TestRedact:
             "zip",
             "bpNumber",
             "coApplicantFirstName",
+            "outageCustomerName",
+            "customer_name",
             "userId",
             "id_token",
         ],
