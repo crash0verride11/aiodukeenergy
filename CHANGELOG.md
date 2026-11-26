@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.5.1 (2026-11-26)
+
+### Bug fixes
+
+- Redact customer names such as outagecustomername (#10) ([`1e92ef6`](https://github.com/crash0verride11/aiodukeenergy/commit/1e92ef68599247b39c716094b2abb1cc2f97f4b9))
+
 ## v1.5.0 (2026-11-26)
 
 ### Features
