@@ -383,7 +383,8 @@ async def main() -> None:
                 try:
                     await check_meter(client, serial, args.first_day)
                 except (CheckError, aiohttp.ClientError, TimeoutError) as err:
-                    print(f"  Stopped: {err!r}. Try again later.")
+                    # Not repr(): an HTTP error's repr can include the bearer token.
+                    print(f"  Stopped: {type(err).__name__}: {err}. Try again later.")
         except DukeEnergyAuthError as err:
             print(f"Authentication error: {err}")
             sys.exit(1)

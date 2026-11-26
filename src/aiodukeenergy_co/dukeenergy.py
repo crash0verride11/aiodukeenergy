@@ -31,6 +31,7 @@ from typing import TYPE_CHECKING, Any, Literal
 
 import yarl
 
+from ._redact import mask_id, redact, redact_body, redacted_errors
 from .exceptions import DukeEnergyError
 
 if TYPE_CHECKING:
@@ -187,7 +188,7 @@ class DukeEnergy:
         meter = self._meters.get(serial_number) if self._meters else None
 
         if meter is None:
-            raise ValueError(f"Meter {serial_number} not found")
+            raise ValueError(f"Meter {mask_id(serial_number)} not found")
 
         # Duke uses the selected (start) date with the current date's H:M:S:M
         # as the anchor for HOURLY and DAILY series.
@@ -320,7 +321,7 @@ class DukeEnergy:
         account = self._accounts.get(account_number) if self._accounts else None
 
         if account is None:
-            raise ValueError(f"Account {account_number} not found")
+            raise ValueError(f"Account {mask_id(account_number)} not found")
 
         result = await self._post_json(
             _BASE_URL.joinpath("billing-and-payment", "invoice", "list"),
@@ -409,7 +410,7 @@ class DukeEnergy:
         meter = self._meters.get(serial_number) if self._meters else None
 
         if meter is None:
-            raise ValueError(f"Meter {serial_number} not found")
+            raise ValueError(f"Meter {mask_id(serial_number)} not found")
 
         # endDate is always yesterday; startDate defaults to it when not given.
         end_date = datetime.now() - timedelta(days=1)
@@ -441,16 +442,23 @@ class DukeEnergy:
         :param params: Query parameters.
         :returns: JSON response as dictionary.
         """
-        _LOGGER.debug("Calling %s with params: %s", url, params)
+        _LOGGER.debug("Calling %s with params: %s", url, redact(params))
 
-        response = await self._auth.request("GET", url, params=params or {})
-        _LOGGER.debug("Response from %s: %s", url, response.status)
-        if not response.ok:
-            error_body = await response.text()
-            _LOGGER.debug("Error response body from %s: %s", url, error_body)
-        response.raise_for_status()
-        json_data = await response.json()
-        _LOGGER.debug("JSON from %s: %s", url, json_data)
+        with redacted_errors():
+            response = await self._auth.request("GET", url, params=params or {})
+            _LOGGER.debug("Response from %s: %s", url, response.status)
+            if not response.ok:
+                error_body = await response.text()
+                _LOGGER.debug(
+                    "Error response body from %s: %s",
+                    url,
+                    redact_body(error_body, params),
+                )
+            response.raise_for_status()
+            json_data = await response.json()
+        if _LOGGER.isEnabledFor(logging.DEBUG):
+            # Redacting copies the whole response; skip it when nothing is logged.
+            _LOGGER.debug("JSON from %s: %s", url, redact(json_data))
         return json_data
 
     async def _post_json(
@@ -469,15 +477,21 @@ class DukeEnergy:
             for large responses.
         :returns: JSON response as dictionary.
         """
-        _LOGGER.debug("Posting to %s with body: %s", url, body)
+        _LOGGER.debug("Posting to %s with body: %s", url, redact(body))
 
-        response = await self._auth.request("POST", url, json=body or {})
-        _LOGGER.debug("Response from %s: %s", url, response.status)
-        if not response.ok:
-            error_body = await response.text()
-            _LOGGER.debug("Error response body from %s: %s", url, error_body)
-        response.raise_for_status()
-        json_data = await response.json()
-        if log_response:
-            _LOGGER.debug("JSON from %s: %s", url, json_data)
+        with redacted_errors():
+            response = await self._auth.request("POST", url, json=body or {})
+            _LOGGER.debug("Response from %s: %s", url, response.status)
+            if not response.ok:
+                error_body = await response.text()
+                _LOGGER.debug(
+                    "Error response body from %s: %s",
+                    url,
+                    redact_body(error_body, body),
+                )
+            response.raise_for_status()
+            json_data = await response.json()
+        if log_response and _LOGGER.isEnabledFor(logging.DEBUG):
+            # Redacting copies the whole response; skip it when nothing is logged.
+            _LOGGER.debug("JSON from %s: %s", url, redact(json_data))
         return json_data
