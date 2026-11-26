@@ -28,6 +28,7 @@ import aiohttp
 import jwt
 import yarl
 
+from ._redact import redact_body, redacted_errors, summarize_error
 from .exceptions import DukeEnergyAuthError
 
 _LOGGER = logging.getLogger(__name__)
@@ -240,10 +241,13 @@ class Auth0Client:
 
         if response.status != 200:
             text = await response.text()
-            _LOGGER.error("Token exchange failed: %s", text)
-            raise DukeEnergyAuthError(
-                f"Token exchange failed: {response.status} - {text}"
+            summary = summarize_error(response.status, text)
+            _LOGGER.error("Token exchange failed: %s", summary)
+            _LOGGER.debug(
+                "Token exchange error body: %s",
+                redact_body(text, secrets=(code, self._code_verifier)),
             )
+            raise DukeEnergyAuthError(f"Token exchange failed: {summary}")
 
         result = await response.json()
         _LOGGER.debug("Token exchange successful")
@@ -279,10 +283,13 @@ class Auth0Client:
 
         if response.status != 200:
             text = await response.text()
-            _LOGGER.error("Token refresh failed: %s", text)
-            raise DukeEnergyAuthError(
-                f"Token refresh failed: {response.status} - {text}"
+            summary = summarize_error(response.status, text)
+            _LOGGER.error("Token refresh failed: %s", summary)
+            _LOGGER.debug(
+                "Token refresh error body: %s",
+                redact_body(text, secrets=(refresh_token,)),
             )
+            raise DukeEnergyAuthError(f"Token refresh failed: {summary}")
 
         result = await response.json()
         _LOGGER.debug("Token refresh successful")
@@ -295,10 +302,11 @@ class Auth0Client:
         :param access_token: The access token.
         :returns: User info containing email, sub, etc.
         """
-        response = await self.session.get(
-            _USERINFO_URL,
-            headers={"Authorization": f"Bearer {access_token}"},
-            timeout=self.timeout,
-        )
-        response.raise_for_status()
-        return await response.json()
+        with redacted_errors():
+            response = await self.session.get(
+                _USERINFO_URL,
+                headers={"Authorization": f"Bearer {access_token}"},
+                timeout=self.timeout,
+            )
+            response.raise_for_status()
+            return await response.json()

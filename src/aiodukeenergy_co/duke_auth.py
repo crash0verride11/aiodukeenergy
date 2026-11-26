@@ -26,6 +26,7 @@ from typing import TYPE_CHECKING, Any
 import aiohttp
 import yarl
 
+from ._redact import redact_body, summarize_error
 from .auth0 import Auth0Client, decode_token, is_token_expired
 from .exceptions import (
     DukeEnergyAuthError,
@@ -204,6 +205,9 @@ class AbstractDukeEnergyAuth(ABC):
         ) as response:
             if response.status != 200:
                 text = await response.text()
+                safe_text = redact_body(
+                    text, secrets=(id_token, self._email, self._internal_user_id)
+                )
                 if response.content_type != "application/json":
                     # Non-JSON means the request never reached Duke's API —
                     # an edge/WAF refusal (Akamai "Access Denied"), not a
@@ -214,18 +218,16 @@ class AbstractDukeEnergyAuth(ABC):
                         response.status,
                         response.content_type,
                     )
-                    _LOGGER.debug("Blocked response body: %s", text)
+                    _LOGGER.debug("Blocked response body: %s", safe_text)
                     raise DukeEnergyBlockedError(
                         f"Duke Energy token exchange blocked: {response.status} "
                         f"({response.content_type})"
                     )
-                _LOGGER.error(
-                    "Duke Energy token exchange failed: %s - %s",
-                    response.status,
-                    text,
-                )
+                summary = summarize_error(response.status, text)
+                _LOGGER.error("Duke Energy token exchange failed: %s", summary)
+                _LOGGER.debug("Duke Energy token exchange error body: %s", safe_text)
                 raise DukeEnergyAuthError(
-                    f"Duke Energy token exchange failed: {response.status} - {text}"
+                    f"Duke Energy token exchange failed: {summary}"
                 )
 
             data = await response.json()

@@ -1142,7 +1142,9 @@ class TestUsageAPI:
                 client = DukeEnergy(auth)
                 await client.get_accounts()
 
-                with pytest.raises(ValueError, match="Account bogus not found"):
+                with pytest.raises(
+                    ValueError, match=r"Account \*\*REDACTED\*\* not found"
+                ):
                     await client.get_invoices("bogus")
 
     @pytest.mark.asyncio
@@ -1894,7 +1896,7 @@ class TestErrorHandling:
 
                 start = datetime.strptime("2024-01-01", "%Y-%m-%d")
                 end = datetime.strptime("2024-01-31", "%Y-%m-%d")
-                with pytest.raises(ValueError, match="Meter invalid_serial not found"):
+                with pytest.raises(ValueError, match=r"Meter \.\.\.rial not found"):
                     await client.get_energy_usage(
                         "invalid_serial", "DAILY", "WEEK", start, end
                     )
