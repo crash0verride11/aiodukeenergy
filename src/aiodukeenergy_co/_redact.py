@@ -52,9 +52,16 @@ def _names(*names: str) -> tuple[str, ...]:
 # mailingAddressParsed, email, zipCode.
 _BLOCKED_PARTS = _names("address", "email", "phone", "zip", "postal")
 # Names that end with one of these: primaryBPNumber, relatedBPFirstName,
-# primaryBPName, internalUserID, refresh_token.
+# primaryBPName, outageCustomerName, internalUserID, refresh_token.
 _BLOCKED_ENDINGS = _names(
-    "bpNumber", "bpName", "firstName", "lastName", "fullName", "userId", "token"
+    "bpNumber",
+    "bpName",
+    "firstName",
+    "lastName",
+    "fullName",
+    "customerName",
+    "userId",
+    "token",
 )
 _BLOCKED = _names("nickname", "city", "stateCode", "codeVerifier")
 
