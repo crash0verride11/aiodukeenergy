@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.5.0 (2026-11-26)
+
+### Features
+
+- Redact personal data from logs and errors ([`9616067`](https://github.com/crash0verride11/aiodukeenergy/commit/961606717621564e2dfe8613ab93c090f6676c6c))
+
 ## v1.4.0 (2026-11-25)
 
 ### Documentation

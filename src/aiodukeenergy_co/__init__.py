@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-__version__ = "1.4.0"
+__version__ = "1.5.0"
 
 from ._redact import mask_id
 from .auth0 import Auth0Client
