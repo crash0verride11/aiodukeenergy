@@ -49,47 +49,86 @@ Import as `aiodukeenergy_co`
 
 ## Usage
 
-Duke Energy uses Auth0 with CAPTCHA protection which blocks automated logins.
-Authentication requires a browser-based OAuth flow using a Chrome extension to
-capture the mobile app's custom redirect URL.
+Duke Energy uses Auth0 with CAPTCHA protection, which blocks automated logins.
+You sign in once in a browser, copy the address Duke lands on, and paste it
+into the authentication script. The script exchanges it for API tokens.
 
-### Setup
+### Authentication
 
-1. Add the appropriate extension for your browser:
+> On non-iOS devices, you must set the browser's User-Agent to an iPhone.
+> Duke rejects desktop browsers after you sign in.
 
-   #### chrome-extension
-
-   - Download the [latest chrome-extension.zip](https://github.com/crash0verride11/aiodukeenergy/releases/latest/download/chrome-extension.zip) from releases (or use `./chrome-extension/` from source)
-   - Extract the zip file
-   - Open Chrome and navigate to `chrome://extensions/`
-   - Enable "Developer mode"
-   - Click "Load unpacked" and select the extracted folder
-
-   #### safari-extension
-
-   Requires XCode and a free developer account
-
-   - Download the [latest safari-extension.zip](https://github.com/crash0verride11/ha-dukeenergy/releases/latest/download/safari-extension.zip) from releases (or use `./safari-extension/` from source)
-   - Extract the zip file
-   - Open the Xcode project
-   - Go to project settings and set your free developer account as the 'Team' for both Targets (`com.local.duke-energy-oauth-helper` and `com.local.duke-energy-oauth-helper.Extension`). Also ensure 'Signing Certificate' is set to 'Development'
-   - Quit Safari if open and build the extension
-   - Open Safai and enable the extension in Safari settings
-   - Build the extension again
-   - Enable access to all URLs or a specific URL (https://login.duke-energy.com) in the extension settings
-
-2. Run the browser authentication script:
+1. Make your browser identify as an iPhone:
+   - **Firefox:** `about:config` → add a **String** named
+     `general.useragent.override` with the iPhone value below. Firefox has no
+     per-site override, so reset the pref when you are done.
+   - **Safari Desktop:** enable the Develop menu, then select
+     **Develop → User Agent → Safari — iOS ## — iPhone**.
+   - **Chrome/Edge:** DevTools (`F12`) → device toolbar (`Ctrl+Shift+M`) →
+     iPhone. Device emulation applies per tab, so turn it on in the tab the
+     script opens and reload before you sign in.
+2. Run the authentication script:
 
    ```bash
    cd examples
    python browser_auth.py
    ```
 
-3. The script will:
-   - Open your browser to Duke Energy's login page
-   - After you log in, the extension captures the authorization code
-   - Exchange the code for API tokens
-   - Save tokens to `duke_tokens.json`
+3. Enter your Duke Energy email when asked (or press Enter to skip) so the
+   sign-in page opens with it filled in. The script opens Duke's sign-in page and
+   prints the link if the browser does not open. Sign in, completing any MFA steps.
+4. Duke lands on a "Not Found" page whose address ends in `?code=…&state=…`.
+5. Copy the **entire** address and paste it into the script. The script checks
+   that the address belongs to this sign-in, exchanges the code for tokens,
+   and offers to save them to `duke_tokens.json`.
+6. If Duke shows `access_denied`, the browser still looked like a desktop.
+   Fix the User-Agent and run the script again for a fresh sign-in link.
+
+Keep the script running until you paste the address: each run issues a new,
+unique sign-in link. Treat the address as a sign-in credential and keep it
+out of issue reports and screenshots.
+
+Example iPhone User-Agent:
+
+```
+Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.6 Mobile/15E148 Safari/604.1
+```
+
+#### If the sign-in fails
+
+| What you see                                                | Cause                                          | What to do                                                                  |
+| ----------------------------------------------------------- | ---------------------------------------------- | --------------------------------------------------------------------------- |
+| `access_denied` / "An error has occurred" instead of a code | Duke's login still saw a desktop browser       | Apply the iPhone User-Agent, then run the script again                      |
+| "Not Found" page with `code` and `state` in the address     | This is the expected landing page              | Copy the whole address into the script                                      |
+| No `code` in the address                                    | Sign-in did not complete                       | Reopen the script's current sign-in link with the iPhone User-Agent applied |
+| Code rejected during token exchange                         | Codes expire within minutes and work only once | Run the script again and paste promptly                                     |
+
+### Optional: browser extensions
+
+You don't need an extension. The script also accepts the bare authorization
+code that these extensions show.
+
+#### Legacy Chrome extension
+
+The original Chrome extension (`./chrome-extension/`) is no longer needed and
+is no longer maintained. It may still work for now but may be removed in
+a future release; use the manual steps above instead.
+
+#### Legacy Safari extension
+
+The original Safari extension (`./safari-extension/`) is no longer needed
+and is no longer maintained. It may still work for now but may be removed
+in a future release; use the manual steps above instead.
+
+Requires Xcode and a free developer account.
+
+- Use the `./safari-extension/` folder from source
+- Open the Xcode project
+- Go to project settings and set your free developer account as the 'Team' for both Targets (`com.local.duke-energy-oauth-helper` and `com.local.duke-energy-oauth-helper.Extension`). Also ensure 'Signing Certificate' is set to 'Development'
+- Quit Safari if open and build the extension
+- Open Safari and enable the extension in Safari settings
+- Build the extension again
+- Enable access to all URLs or a specific URL (https://login.duke-energy.com) in the extension settings
 
 ### Using Tokens
 
@@ -139,6 +178,7 @@ You can also integrate the OAuth flow into your own application:
 import asyncio
 import webbrowser
 import aiohttp
+import yarl
 from aiodukeenergy_co import Auth0Client, DukeEnergy, DukeEnergyAuth
 
 
@@ -153,8 +193,10 @@ async def main():
         # Step 2: Open browser for user login
         webbrowser.open(auth_url)
 
-        # Step 3: Get the authorization code (captured by Chrome extension)
-        code = input("Enter the authorization code: ")
+        # Step 3: Get the code from the callback address the user pastes back
+        # (see examples/browser_auth.py for state and error checking)
+        callback_url = input("Paste the callback URL: ").strip()
+        code = yarl.URL(callback_url).query["code"]
 
         # Step 4: Exchange code for tokens
         await auth.authenticate_with_code(code, code_verifier)

@@ -9,7 +9,7 @@ Flow:
 1. Call get_authorization_url() to get a URL for the user to open in a browser
 2. User logs in via browser and gets redirected to
    https://login.duke-energy.com/ios/ URL with code
-3. Use a Chrome extension to capture the code from the redirect
+3. User copies the callback URL (or just its code) from the browser
 4. Call exchange_code() with the authorization code to get tokens
 """
 
@@ -135,7 +135,7 @@ class Auth0Client:
         auth_url, state, code_verifier = client.get_authorization_url()
 
         # User opens auth_url in browser, logs in, gets redirected to https://login.duke-energy.com/ios/
-        # Use Chrome extension to capture the code from the redirect URL
+        # User copies the code from the callback URL in the address bar
 
         # Exchange code for tokens
         tokens = await client.exchange_code(code, code_verifier)
@@ -165,8 +165,8 @@ class Auth0Client:
         redirected to a https://login.duke-energy.com/ios/
         URL containing an authorization code.
 
-        Use the Chrome extension from ./chrome-extension/ to capture
-        the authorization code from the redirect.
+        The browser must identify as an iPhone, or Duke rejects the sign-in.
+        The code is in the callback URL's ``code`` query parameter.
 
         :returns: Tuple of (authorize_url, state, code_verifier).
                   Save the code_verifier - it's needed for token exchange.

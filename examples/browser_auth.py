@@ -4,12 +4,14 @@ Browser-based OAuth authentication helper for Duke Energy.
 
 This script handles the OAuth flow for Duke Energy's mobile API:
 1. Generates PKCE challenge and opens browser for login
-2. User logs in and uses Chrome extension to capture the redirect code
+2. User logs in with the browser identifying as an iPhone and copies the
+   callback address Duke lands on (a "Not Found" page ending in
+   ?code=...&state=...)
 3. Script exchanges the authorization code for Duke Energy API tokens
 
-Prerequisites:
-    - Install the Chrome extension from ./chrome-extension/
-    - See ./chrome-extension/README.md for installation instructions
+Paste either the full callback URL or just the authorization code (for
+example, the code shown by the optional Safari or legacy Chrome extension).
+See the README's "Authentication" section for the User-Agent setup.
 
 Usage:
     python browser_auth.py
@@ -19,8 +21,10 @@ import asyncio
 import json
 import sys
 import webbrowser
+from urllib.parse import quote
 
 import aiohttp
+import yarl
 
 from aiodukeenergy_co import (
     Auth0Client,
@@ -29,6 +33,59 @@ from aiodukeenergy_co import (
     DukeEnergyAuthError,
 )
 
+IPHONE_USER_AGENT = (
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 "
+    "(KHTML, like Gecko) Version/18.6 Mobile/15E148 Safari/604.1"
+)
+
+
+def sign_in_url(auth_url: str, email: str) -> str:
+    """
+    Return the sign-in URL encoded for a browser, with the email filled in.
+
+    The library's URL has raw spaces in its scope, where a copied or clicked
+    link can be cut off. The "email" in that scope is a permission name and has
+    to stay; the address to sign in with goes in login_hint.
+    """
+    auth_url = auth_url.replace(" ", "%20")
+    return f"{auth_url}&login_hint={quote(email, safe='')}" if email else auth_url
+
+
+def parse_code(raw: str, expected_state: str) -> str:
+    """
+    Return the authorization code from a pasted callback URL or bare code.
+
+    A full callback URL is checked for an authorization error and for a state
+    that matches this sign-in attempt. Anything without a query string is
+    taken as the code itself.
+
+    :raises ValueError: If the URL is unusable or belongs to another attempt.
+    """
+    raw = raw.strip()
+    if "?" not in raw:
+        return raw
+
+    try:
+        query = yarl.URL(raw).query
+    except ValueError as err:
+        raise ValueError("That doesn't look like a valid callback URL.") from err
+
+    if "error" in query:
+        detail = query.get("error_description") or query["error"]
+        raise ValueError(
+            f"Duke rejected the sign-in ({detail}). This usually means the "
+            "browser still looked like a desktop. Apply the iPhone User-Agent "
+            "and start a fresh sign-in."
+        )
+    if not (code := query.get("code")):
+        raise ValueError("No code in that URL; the sign-in did not complete.")
+    if query.get("state") != expected_state:
+        raise ValueError(
+            "That URL belongs to a different sign-in attempt. Use the link "
+            "printed above and paste the new address."
+        )
+    return code
+
 
 async def main() -> None:
     """Run the browser-based OAuth flow."""
@@ -36,9 +93,15 @@ async def main() -> None:
     print("Duke Energy Browser OAuth Helper")
     print("=" * 60)
     print()
-    print("Prerequisites:")
-    print("  1. Install the Chrome extension from ./chrome-extension/")
-    print("  2. Load it as an unpacked extension in chrome://extensions/")
+    print("Before signing in, make your browser identify as an iPhone.")
+    print("Duke rejects desktop browsers after authentication:")
+    print()
+    print("  Firefox: about:config -> String general.useragent.override")
+    print("  Safari:  Develop -> User Agent -> Safari - iOS 18 - iPhone")
+    print("  Chrome/Edge: DevTools (F12) -> device toolbar -> iPhone, then reload")
+    print()
+    print("iPhone User-Agent:")
+    print(f"  {IPHONE_USER_AGENT}")
     print()
 
     async with aiohttp.ClientSession() as session:
@@ -46,13 +109,19 @@ async def main() -> None:
         auth0_client = Auth0Client(session)
 
         # Step 1: Get authorization URL
+        email = input("Duke Energy sign-in email (Enter to skip): ").strip()
+        print()
         print("Step 1: Generating authorization URL...")
         auth_url, _state, code_verifier = auth0_client.get_authorization_url()
+        auth_url = sign_in_url(auth_url, email)
+        # Compare against the state as Duke decodes it from the authorize URL
+        # (the raw base64 value's "+" arrives as a space).
+        expected_state = yarl.URL(auth_url).query.get("state", "")
 
         print()
         print("Step 2: Opening browser for login...")
         print()
-        print("If the browser doesn't open, manually visit this URL:")
+        print("If the browser doesn't open, manually visit this URL, unchanged:")
         print()
         print(auth_url)
         print()
@@ -66,15 +135,25 @@ async def main() -> None:
         print()
         print("1. Log in with your Duke Energy credentials")
         print("2. Complete any MFA/verification steps")
-        print("3. After login, the Chrome extension will capture the code")
-        print("4. Copy the authorization code from the extension page")
-        print("5. Paste the code below")
+        print('3. Duke lands on a "Not Found" page whose address ends in')
+        print("   ?code=...&state=...")
+        print("4. Copy the ENTIRE address and paste it below")
+        print("   (a bare code from an extension also works)")
         print()
-        print("Enter the authorization code:")
-        code = input("> ").strip()
+        print("Treat that URL as a sign-in credential: keep it out of issue")
+        print("reports and screenshots.")
+        print()
+        print("Paste the callback URL or authorization code:")
+        raw = input("> ").strip()
 
-        if not code:
-            print("Error: No code provided")
+        if not raw:
+            print("Error: Nothing pasted")
+            sys.exit(1)
+
+        try:
+            code = parse_code(raw, expected_state)
+        except ValueError as e:
+            print(f"Error: {e}")
             sys.exit(1)
 
         print()
