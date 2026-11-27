@@ -147,3 +147,7 @@ cython_debug/
 
 # Chrome-generated extension metadata
 chrome-extension/_metadata/
+
+# Xcode per-user state
+xcuserdata/
+*.xcuserstate

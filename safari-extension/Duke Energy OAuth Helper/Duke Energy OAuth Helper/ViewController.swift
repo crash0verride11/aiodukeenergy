@@ -2,7 +2,7 @@
 //  ViewController.swift
 //  Duke Energy OAuth Helper
 //
-//  Created by Raymond Lanser on 2/18/26.
+//  Created on 2/18/26.
 //
 
 import Cocoa
